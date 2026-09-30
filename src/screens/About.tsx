@@ -16,9 +16,14 @@ const BLOKKEN = [
   {
     icon: ShoppingCart,
     titel: 'Richtprijzen',
-    badge: <Badge tone="gold">Voorbeeld</Badge>,
+    badge: <Badge tone="gold">Voorbeeld of eigen</Badge>,
+    actie: (
+      <Button size="sm" variant="secondary" className="mt-3" onClick={() => ga('/prijzen')}>
+        Prijzen beheren
+      </Button>
+    ),
     tekst:
-      'De prijzen van Gamma, Praxis, Hornbach en Karwei zijn voorbeeldprijzen uit een lokale tabel, geen actuele winkelprijzen. De app is zo opgezet dat echte prijzen later gekoppeld kunnen worden.',
+      'Standaard gebruikt de app voorbeeldprijzen voor Gamma, Praxis, Hornbach en Karwei. Onder Prijzen beheren vul je je eigen prijzen in; die gaan direct voor in de inkooplijst, de winkeltotalen en de offerte. Met exporteren en importeren neem je ze mee naar een ander apparaat.',
   },
   {
     icon: Camera,
@@ -55,6 +60,7 @@ export function About() {
                 {b.titel} {b.badge}
               </p>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{b.tekst}</p>
+              {'actie' in b && b.actie}
             </div>
           </Card>
         ))}

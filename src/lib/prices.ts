@@ -30,6 +30,14 @@ export interface PrijsAanbod {
   winkel: WinkelId
   /** prijs in euro incl. btw per prijseenheid (m² bij tegels/matten, anders per verpakking/stuk) */
   prijs: number
+  /** herkomst van de prijs; ontbreekt = volgt uit `PrijsBron.isVoorbeeld` */
+  bron?: 'eigen' | 'voorbeeld'
+  /** afwijkende inhoud per verpakking bij deze winkel (in de eenheid van het artikel) */
+  inhoud?: number
+  productNaam?: string
+  link?: string
+  /** ISO-datum waarop de prijs is bijgewerkt */
+  bijgewerkt?: string
 }
 
 export interface PrijsBron {
@@ -78,15 +86,19 @@ export const VOORBEELD_PRIJSTABEL: Record<ProductId, [number | null, number | nu
   afdekset: [24.99, 22.99, null, 26.99],
 }
 
+export const VOORBEELD_PEILDATUM = '2026-09-01'
+
 export const voorbeeldPrijsBron: PrijsBron = {
   id: 'voorbeeld',
   naam: 'Richtprijzen (voorbeeld)',
   isVoorbeeld: true,
-  peildatum: '2026-09-01',
+  peildatum: VOORBEELD_PEILDATUM,
   aanbiedingen(product) {
     const rij = VOORBEELD_PRIJSTABEL[product]
     if (!rij) return []
-    return WINKELS.flatMap((w, i) => (rij[i] == null ? [] : [{ winkel: w.id, prijs: rij[i] as number }]))
+    return WINKELS.flatMap((w, i) =>
+      rij[i] == null ? [] : [{ winkel: w.id, prijs: rij[i] as number, bron: 'voorbeeld' as const, bijgewerkt: VOORBEELD_PEILDATUM }],
+    )
   },
 }
 

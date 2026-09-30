@@ -20,15 +20,20 @@
 4. **Inkooplijst** — gegroepeerd, af te vinken, met richtprijs per artikel, de goedkoopste winkel per artikel en het
    totaal per winkel (Gamma, Praxis, Hornbach, Karwei). Kopiëren en delen.
 5. **Offerte** — een nette, printvriendelijke raming (materialen + optioneel arbeid) die je via de browser als PDF bewaart.
+6. **Prijzen beheren** (`#/prijzen`, via de header, de Over-pagina en de prijsmelding op de inkooplijst) — onderhoud zelf
+   de prijzen per artikel en per winkel: prijs incl. btw, verpakking/inhoud (bijv. zak à 20 kg), productnaam, link en
+   'niet leverbaar'. Met zoeken, filters (eigen / voorbeeld / niet leverbaar), 'laatst bijgewerkt' per prijs,
+   export/import als JSON of CSV en 'Terug naar voorbeeldprijzen'.
 
 Projecten worden lokaal in de browser opgeslagen (localStorage; foto's in IndexedDB). Er gaat niets naar een server.
 De app is een installeerbare PWA.
 
 ## Wat is (nog) voorbeeld?
 
-- **Prijzen zijn voorbeeldprijzen.** Er zijn géén live winkelprijzen gekoppeld. De tabel in
-  [`src/lib/prices.ts`](src/lib/prices.ts) is alleen bedoeld om de werking te tonen en wordt in de app steeds als
-  *richtprijzen (voorbeeld)* gelabeld.
+- **Standaard zijn prijzen voorbeeldprijzen.** Er zijn géén live winkelprijzen gekoppeld. De tabel in
+  [`src/lib/prices.ts`](src/lib/prices.ts) is alleen bedoeld om de werking te tonen. Zodra je via *Prijzen beheren*
+  eigen prijzen invult, gaan die vóór; de melding op de inkooplijst en in de offerte laat zien hoeveel prijzen nog
+  voorbeeld zijn, of 'Eigen prijzen, bijgewerkt op …' als alles eigen is.
 - **Automatisch opmeten / foto-analyse komt binnenkort.** Foto's worden bewaard als referentie; de berekening gebruikt
   de handmatig ingevoerde maten.
 - **Arbeidsuren** in de offerte zijn een indicatieve schatting op basis van eenvoudige normen.
@@ -48,9 +53,14 @@ Alle formules staan in [`src/lib/calc.ts`](src/lib/calc.ts) (object `REGELS`) en
 | Kit | ± 8 m voeg per koker van 310 ml |
 | Vloerverwarming | mat op ca. 70% van de vloer |
 
-## Echte prijzen koppelen
+## Eigen prijzen
 
-De prijslaag werkt via een `PrijsBron`-interface:
+Eigen prijzen worden per apparaat in `localStorage` bewaard (sleutel `slimmer-wonen:prijzen:v1`). Gebruik
+*Exporteren* (JSON of CSV) om een back-up te maken of ze naar een ander apparaat te verhuizen, en *Importeren* om
+ze terug te zetten (ingelezen prijzen winnen van wat er al stond). Het CSV-bestand (`;`, decimale komma) opent
+direct in Excel; je kunt het daar ook invullen en weer importeren.
+
+Techniek: de prijslaag werkt via een `PrijsBron`-interface in [`src/lib/prices.ts`](src/lib/prices.ts):
 
 ```ts
 export interface PrijsBron {
@@ -58,12 +68,15 @@ export interface PrijsBron {
   naam: string
   isVoorbeeld: boolean
   peildatum: string
-  aanbiedingen(product: ProductId): { winkel: WinkelId; prijs: number }[]
+  aanbiedingen(product: ProductId): PrijsAanbod[] // { winkel, prijs, bron, inhoud?, productNaam?, link?, bijgewerkt? }
 }
 ```
 
-Maak een eigen bron (bijv. uit een JSON-feed of eigen API) en zet die in `src/lib/useCalc.ts` als `actievePrijsBron`.
-Inkooplijst, winkeltotalen en offerte werken dan automatisch met de nieuwe prijzen.
+`metEigenPrijzen(voorbeeldPrijsBron, eigen)` in [`src/lib/eigenPrijzen.ts`](src/lib/eigenPrijzen.ts) legt de eigen
+prijzen over de voorbeeldbron heen (eigen prijs wint, 'niet leverbaar' haalt de winkel weg, een afwijkende inhoud
+per verpakking rekent het aantal verpakkingen om). `usePrijsBron()` uit `src/lib/prijsStore.ts` levert de actieve
+bron aan inkooplijst, winkeltotalen, goedkoopste winkel en offerte. Wil je later een echte feed/API koppelen, maak
+dan een eigen `PrijsBron` en gebruik die als basis in plaats van `voorbeeldPrijsBron`.
 
 ## Ontwikkelen
 

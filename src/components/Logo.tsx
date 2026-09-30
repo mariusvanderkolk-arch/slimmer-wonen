@@ -25,7 +25,7 @@ export function Logo({ compact = false, className = '' }: { compact?: boolean; c
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <LogoMark className={compact ? 'h-8 w-8' : 'h-10 w-10'} />
       <span className="flex flex-col leading-none">
-        <span className={`font-display font-semibold tracking-tight text-ink ${compact ? 'text-[1.35rem]' : 'text-[1.6rem]'}`}>
+        <span className={`font-display font-semibold tracking-tight whitespace-nowrap text-ink ${compact ? 'text-[1.3rem]' : 'text-[1.6rem]'}`}>
           Slimmer <span className="text-gold-600">Wonen</span>
         </span>
         {!compact && (

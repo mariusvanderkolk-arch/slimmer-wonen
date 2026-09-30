@@ -17,6 +17,14 @@ export function Quote({ p }: { p: Project }) {
   const nummer = `SW-${new Date(p.createdAt).getFullYear()}-${p.id.replace(/-/g, '').slice(0, 4).toUpperCase()}`
   const totaal = inkoop.goedkoopsteMix + (metArbeid ? arbeidKosten : 0)
   const werk = SCOPE_ITEMS.filter((i) => p.scope[i.key])
+  const st = inkoop.prijsStatus
+  const gemengd = st.eigen > 0 && st.voorbeeld > 0
+  const prijsTekst =
+    st.eigen === 0
+      ? 'Materiaalprijzen zijn richtprijzen (voorbeeld) en geen actuele winkelprijzen.'
+      : st.voorbeeld === 0
+        ? `Materiaalprijzen zijn eigen prijzen, bijgewerkt op ${st.laatstBijgewerkt ? datum(Date.parse(st.laatstBijgewerkt)) : '—'}.`
+        : `Materiaalprijzen zijn deels eigen prijzen; bedragen met * zijn voorbeeldprijzen (${st.voorbeeld} van ${st.eigen + st.voorbeeld} prijzen).`
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
@@ -112,10 +120,14 @@ export function Quote({ p }: { p: Project }) {
                         {r.spec && <span className="text-ink-muted"> · {r.spec}</span>}
                       </td>
                       <td className="tabnum py-2 pr-3 text-right whitespace-nowrap">
-                        {r.aantal} <span className="text-ink-muted">× {r.verpakking.replace(/^(doos|zak|bus|emmer|rol|koker|lengte|plaat) à /, '$1 ')}</span>
+                        {r.goedkoopste?.aantal ?? r.aantal}{' '}
+                        <span className="text-ink-muted">× {(r.goedkoopste?.verpakking ?? r.verpakking).replace(/^(doos|zak|bus|emmer|rol|koker|lengte|plaat) à /, '$1 ')}</span>
                       </td>
                       <td className="py-2 pr-3 text-ink-soft">{r.goedkoopste ? winkelNaam(r.goedkoopste.winkel) : '—'}</td>
-                      <td className="tabnum py-2 text-right whitespace-nowrap">{r.goedkoopste ? euro(r.goedkoopste.totaal) : '—'}</td>
+                      <td className="tabnum py-2 text-right whitespace-nowrap">
+                        {r.goedkoopste ? euro(r.goedkoopste.totaal) : '—'}
+                        {gemengd && r.goedkoopste?.bron === 'voorbeeld' && <span className="text-gold-600">*</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,9 +178,8 @@ export function Quote({ p }: { p: Project }) {
           </section>
 
           <p className="mt-6 text-[0.72rem] leading-relaxed text-ink-muted">
-            Deze raming is indicatief en gebaseerd op opgegeven maten en vuistregels. Materiaalprijzen zijn richtprijzen
-            (voorbeeld) en geen actuele winkelprijzen. Arbeidsuren zijn een schatting. Aan deze raming kunnen geen rechten
-            worden ontleend; een definitieve offerte volgt na inspectie ter plaatse.
+            Deze raming is indicatief en gebaseerd op opgegeven maten en vuistregels. {prijsTekst} Arbeidsuren zijn een
+            schatting. Aan deze raming kunnen geen rechten worden ontleend; een definitieve offerte volgt na inspectie ter plaatse.
           </p>
           {p.notities && (
             <div className="avoid-break mt-5 rounded-xl border border-sand-200 px-4 py-3 text-sm">

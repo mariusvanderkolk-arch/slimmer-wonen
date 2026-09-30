@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, RotateCcw, Share2, Store } from 'lucide-react'
+import { ArrowRight, Copy, ExternalLink, RotateCcw, Share2, Store } from 'lucide-react'
 import { Badge, Button, Card, Checkbox, Notice } from '../components/ui'
 import { GROEP_ICONS } from '../components/groepIcons'
 import { toast } from '../components/Toast'
@@ -8,7 +8,9 @@ import { WINKELS, prijsEenheid, winkelNaam, type WinkelId } from '../lib/prices'
 import { deelOfKopieer, inkoopTekst, kopieer } from '../lib/share'
 import { projectStore } from '../lib/store'
 import { useBerekening } from '../lib/useCalc'
-import type { InkoopRegel } from '../lib/shopping'
+import type { InkoopRegel, PrijsStatus } from '../lib/shopping'
+import { VOORBEELD_PEILDATUM } from '../lib/prices'
+import { ga } from '../lib/router'
 import type { Project } from '../lib/types'
 
 type Weergave = 'goedkoopst' | WinkelId
@@ -29,10 +31,7 @@ export function Shopping({ p }: { p: Project }) {
 
   return (
     <div className="space-y-5">
-      <Notice title="Richtprijzen (voorbeeld) — geen actuele winkelprijzen">
-        De prijzen hieronder komen uit een voorbeeldtabel (peildatum {datum(Date.parse(inkoop.bron.peildatum))}) en zijn alleen
-        bedoeld om de werking te tonen. Controleer altijd de actuele prijs en voorraad bij de winkel.
-      </Notice>
+      <PrijsMelding status={inkoop.prijsStatus} projectId={p.id} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <div className="order-2 space-y-5 lg:order-1">
@@ -114,23 +113,45 @@ export function Shopping({ p }: { p: Project }) {
                                 <Checkbox checked={aan} className="mt-0.5" />
                                 <span className={`min-w-0 flex-1 ${aan ? 'opacity-50' : ''}`}>
                                   <span className={`block text-[0.92rem] font-medium text-ink ${aan ? 'line-through decoration-gold-500/70' : ''}`}>
-                                    <span className="tabnum mr-1.5 font-semibold text-gold-700">{r.aantal}×</span>
+                                    <span className="tabnum mr-1.5 font-semibold text-gold-700">{a?.aantal ?? r.aantal}×</span>
                                     {r.naam}
+                                    {a?.link && (
+                                      <a
+                                        href={a.link}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        aria-label="Productpagina openen"
+                                        className="ml-1.5 inline-flex translate-y-0.5 text-gold-600 hover:text-gold-700"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                      </a>
+                                    )}
                                   </span>
                                   <span className="mt-0.5 block text-[0.78rem] text-ink-muted">
-                                    {[r.spec, r.verpakking === 'stuk' || r.verpakking === 'set' ? '' : r.verpakking].filter(Boolean).join(' · ') || r.verpakking}
+                                    {[
+                                      a?.productNaam ?? r.spec,
+                                      (a?.verpakking ?? r.verpakking) === 'stuk' || (a?.verpakking ?? r.verpakking) === 'set' ? '' : (a?.verpakking ?? r.verpakking),
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' · ') || r.verpakking}
                                   </span>
                                 </span>
                                 <span className={`shrink-0 text-right ${aan ? 'opacity-50' : ''}`}>
                                   {a ? (
                                     <>
                                       <span className="tabnum block text-[0.92rem] font-semibold text-ink">{euro(a.totaal)}</span>
-                                      <span className="mt-1 inline-flex">
+                                      <span className="mt-1 inline-flex flex-col items-end gap-0.5">
                                         {weergave === 'goedkoopst' ? (
                                           <Badge tone="gold">{winkelNaam(a.winkel)}</Badge>
                                         ) : (
                                           <span className="text-[0.72rem] text-ink-muted">
                                             {euro(a.prijs)}/{prijsEenheid(r.id)}
+                                          </span>
+                                        )}
+                                        {inkoop.prijsStatus.eigen > 0 && inkoop.prijsStatus.voorbeeld > 0 && (
+                                          <span className={`text-[0.66rem] ${a.bron === 'eigen' ? 'font-semibold text-gold-700' : 'text-ink-muted'}`}>
+                                            {a.bron === 'eigen' ? 'eigen prijs' : 'voorbeeldprijs'}
                                           </span>
                                         )}
                                       </span>
@@ -166,9 +187,14 @@ export function Shopping({ p }: { p: Project }) {
         <aside className="order-1 space-y-5 lg:sticky lg:top-24 lg:order-2">
           <Card className="overflow-hidden">
             <div className="bg-ink px-5 py-5 text-sand-50 sm:px-6">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-300">Richtprijs materiaal</p>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-300">
+                {inkoop.prijsStatus.voorbeeld === 0 && inkoop.prijsStatus.eigen > 0 ? 'Totaal materiaal' : 'Richtprijs materiaal'}
+              </p>
               <p className="tabnum mt-1.5 font-display text-[2.4rem] leading-none font-semibold">{euro(inkoop.goedkoopsteMix)}</p>
-              <p className="mt-2 text-xs text-sand-300">Goedkoopste winkel per artikel · incl. btw · voorbeeld</p>
+              <p className="mt-2 text-xs text-sand-300">
+                Goedkoopste winkel per artikel · incl. btw ·{' '}
+                {inkoop.prijsStatus.eigen === 0 ? 'voorbeeldprijzen' : inkoop.prijsStatus.voorbeeld === 0 ? 'eigen prijzen' : 'deels voorbeeld'}
+              </p>
             </div>
             <div className="px-5 py-4 sm:px-6">
               <p className="mb-2 flex items-center gap-2 text-[0.82rem] font-semibold text-ink">
@@ -203,5 +229,39 @@ export function Shopping({ p }: { p: Project }) {
         </aside>
       </div>
     </div>
+  )
+}
+
+/** Melding boven de inkooplijst die zich aanpast aan de herkomst van de gebruikte prijzen. */
+function PrijsMelding({ status, projectId }: { status: PrijsStatus; projectId: string }) {
+  const knop = (tekst: string) => (
+    <Button size="sm" variant="secondary" onClick={() => ga(`/prijzen/${projectId}`)}>
+      {tekst} <ArrowRight className="h-3.5 w-3.5" />
+    </Button>
+  )
+  const totaal = status.eigen + status.voorbeeld
+  if (status.eigen > 0 && status.voorbeeld === 0) {
+    return (
+      <Notice tone="sage" title={`Eigen prijzen, bijgewerkt op ${status.laatstBijgewerkt ? datum(Date.parse(status.laatstBijgewerkt)) : 'onbekende datum'}`} action={knop('Prijzen beheren')}>
+        Alle prijzen in deze inkooplijst heb je zelf ingevoerd.
+      </Notice>
+    )
+  }
+  if (status.eigen > 0) {
+    return (
+      <Notice
+        title={`${status.voorbeeld} van ${totaal} prijzen ${status.voorbeeld === 1 ? 'is' : 'zijn'} nog voorbeeldprijs`}
+        action={knop('Prijzen aanvullen')}
+      >
+        {status.eigen} eigen {status.eigen === 1 ? 'prijs' : 'prijzen'}, laatst bijgewerkt op{' '}
+        {status.laatstBijgewerkt ? datum(Date.parse(status.laatstBijgewerkt)) : '—'}. Artikelen met een voorbeeldprijs zijn gemarkeerd.
+      </Notice>
+    )
+  }
+  return (
+    <Notice title="Richtprijzen (voorbeeld) — geen actuele winkelprijzen" action={knop('Eigen prijzen invullen')}>
+      De prijzen komen uit een voorbeeldtabel (peildatum {datum(Date.parse(VOORBEELD_PEILDATUM))}) en zijn alleen bedoeld om de werking te tonen.
+      Vul je eigen prijzen in voor een actuele vergelijking.
+    </Notice>
   )
 }

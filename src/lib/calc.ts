@@ -43,6 +43,9 @@ export const REGELS = {
 
   /** Sanitairkit: voeg ca. 6×6 mm ≈ 36 ml/m → een koker van 310 ml ≈ 8 m (met verlies). */
   kitMeterPerKoker: 8,
+  kitKokerMl: 310,
+  /** 310 ml / 8 m = 38,75 ml kit per strekkende meter (incl. verlies) */
+  kitMlPerM: 310 / 8,
   kitToiletM: 1.2,
   kitWastafelM: 1.5,
   kitGlaswandM: 4.0,
@@ -285,6 +288,13 @@ export interface MateriaalRegel {
   aantal: number
   /** omschrijving verpakking, bijv. "doos à 1,44 m²" */
   verpakking: string
+  /**
+   * Standaard inhoud van één verpakking in `nodigEenheid` (bijv. 25 bij een zak van 25 kg).
+   * Alleen gezet bij artikelen waarvan een winkel een andere verpakkingsgrootte kan hebben.
+   */
+  inhoud?: number
+  /** soort verpakking, bijv. "zak" — voor het label bij een afwijkende inhoud */
+  verpakkingSoort?: string
   /** aantal prijseenheden (m² bij tegels, anders = aantal) */
   prijsAantal: number
   /** korte onderbouwing van de berekening */
@@ -329,7 +339,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const bussen = omhoog(liter / REGELS.primerBusL)
     add({
       id: 'primer', groep: 'voorbereiding', naam: 'Voorstrijkmiddel (primer)',
-      nodig: liter, nodigEenheid: 'L', aantal: bussen, verpakking: `bus à ${REGELS.primerBusL} L`, prijsAantal: bussen,
+      nodig: liter, nodigEenheid: 'L', aantal: bussen, verpakking: `bus à ${REGELS.primerBusL} L`, prijsAantal: bussen, inhoud: REGELS.primerBusL, verpakkingSoort: 'bus',
       toelichting: `${nl(primerM2)} m² × ${nl(REGELS.primerLPerM2)} L/m² = ${nl(liter)} L`,
     })
   }
@@ -338,7 +348,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const zakken = omhoog(kg / REGELS.egaliseerZakKg)
     add({
       id: 'egaliseer', groep: 'voorbereiding', naam: 'Egaliseermiddel',
-      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.egaliseerZakKg} kg`, prijsAantal: zakken,
+      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.egaliseerZakKg} kg`, prijsAantal: zakken, inhoud: REGELS.egaliseerZakKg, verpakkingSoort: 'zak',
       toelichting: `${nl(o.vloer)} m² × ${nl(p.afmetingen.egaliseerDikte, 1)} mm × ${nl(REGELS.egaliseerKgPerM2PerMm)} kg/m²/mm = ${nl(kg, 1)} kg`,
     })
   }
@@ -349,7 +359,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const emmers = omhoog(kg / REGELS.waterdichtEmmerKg)
     add({
       id: 'waterdicht', groep: 'waterdicht', naam: 'Vloeibare waterdichting (2 lagen)',
-      nodig: kg, nodigEenheid: 'kg', aantal: emmers, verpakking: `emmer à ${REGELS.waterdichtEmmerKg} kg`, prijsAantal: emmers,
+      nodig: kg, nodigEenheid: 'kg', aantal: emmers, verpakking: `emmer à ${REGELS.waterdichtEmmerKg} kg`, prijsAantal: emmers, inhoud: REGELS.waterdichtEmmerKg, verpakkingSoort: 'emmer',
       toelichting: `(${nl(o.vloer)} m² vloer + ${nl(o.douchezoneWand)} m² douchewand) × ${nl(REGELS.waterdichtKgPerM2)} kg/m² = ${nl(kg, 1)} kg`,
     })
     const hoek = s.inloopdouche ? Math.min(REGELS.waterdichtHoogte, p.afmetingen.hoogte) * 2 : 0
@@ -357,7 +367,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const rollen = omhoog(band / REGELS.afdichtbandRolM)
     add({
       id: 'afdichtband', groep: 'waterdicht', naam: 'Afdichtband',
-      nodig: band, nodigEenheid: 'm', aantal: rollen, verpakking: `rol à ${REGELS.afdichtbandRolM} m`, prijsAantal: rollen,
+      nodig: band, nodigEenheid: 'm', aantal: rollen, verpakking: `rol à ${REGELS.afdichtbandRolM} m`, prijsAantal: rollen, inhoud: REGELS.afdichtbandRolM, verpakkingSoort: 'rol',
       toelichting: `Naad vloer-wand${s.inloopdouche ? ' + 2 hoeknaden douche' : ''} + 10% overlap = ${nl(band, 1)} m`,
     })
     add({
@@ -383,7 +393,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const platen = omhoog(o.vloer / REGELS.isolatieplaatM2)
     add({
       id: 'isolatieplaat', groep: 'vloerverwarming', naam: 'Isolatieplaat XPS', spec: '6 mm · 120 × 60 cm',
-      nodig: o.vloer, nodigEenheid: 'm²', aantal: platen, verpakking: `plaat à ${nl(REGELS.isolatieplaatM2)} m²`, prijsAantal: platen,
+      nodig: o.vloer, nodigEenheid: 'm²', aantal: platen, verpakking: `plaat à ${nl(REGELS.isolatieplaatM2)} m²`, prijsAantal: platen, inhoud: REGELS.isolatieplaatM2, verpakkingSoort: 'plaat',
       toelichting: `${nl(o.vloer)} m² ÷ ${nl(REGELS.isolatieplaatM2)} m² per plaat`,
     })
   }
@@ -419,7 +429,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const zakken = omhoog(lijmKg / REGELS.lijmZakKg)
     add({
       id: 'tegellijm', groep: 'lijm-voeg', naam: 'Flexibele tegellijm (C2TE S1)',
-      nodig: lijmKg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.lijmZakKg} kg`, prijsAantal: zakken,
+      nodig: lijmKg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.lijmZakKg} kg`, prijsAantal: zakken, inhoud: REGELS.lijmZakKg, verpakkingSoort: 'zak',
       toelichting: `${lijmUitleg.join(' + ')} = ${nl(lijmKg, 1)} kg`,
     })
   }
@@ -428,7 +438,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const zakken = omhoog(kg / REGELS.voegZakKg)
     add({
       id: 'voegmiddel', groep: 'lijm-voeg', naam: 'Flexibel voegmiddel',
-      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.voegZakKg} kg`, prijsAantal: zakken,
+      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.voegZakKg} kg`, prijsAantal: zakken, inhoud: REGELS.voegZakKg, verpakkingSoort: 'zak',
       toelichting: `${voegUitleg.join(' + ')} + 10% reserve = ${nl(kg, 1)} kg`,
     })
   }
@@ -447,7 +457,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const kokers = omhoog(m / REGELS.kitMeterPerKoker)
     add({
       id: 'kit', groep: 'afwerking', naam: 'Sanitairkit (schimmelwerend)',
-      nodig: m, nodigEenheid: 'm', aantal: kokers, verpakking: 'koker à 310 ml', prijsAantal: kokers,
+      nodig: m * REGELS.kitMlPerM, nodigEenheid: 'ml', aantal: kokers, verpakking: `koker à ${REGELS.kitKokerMl} ml`, prijsAantal: kokers, inhoud: REGELS.kitKokerMl, verpakkingSoort: 'koker',
       toelichting: `${nl(m, 1)} m kitvoeg ÷ ${REGELS.kitMeterPerKoker} m per koker`,
     })
   }
@@ -456,7 +466,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const stuks = omhoog(prof / REGELS.profielLengteM)
     add({
       id: 'profiel', groep: 'afwerking', naam: 'Tegelprofiel aluminium', spec: `voor ${nl(p.wandtegel.dikte, 1)} mm tegel`,
-      nodig: prof, nodigEenheid: 'm', aantal: stuks, verpakking: `lengte à ${nl(REGELS.profielLengteM, 1)} m`, prijsAantal: stuks,
+      nodig: prof, nodigEenheid: 'm', aantal: stuks, verpakking: `lengte à ${nl(REGELS.profielLengteM, 1)} m`, prijsAantal: stuks, inhoud: REGELS.profielLengteM, verpakkingSoort: 'lengte',
       toelichting: `Bovenrand tegelwerk en dagkanten ramen = ${nl(prof, 1)} m`,
     })
   }
@@ -466,14 +476,14 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const zakken = omhoog(kg / REGELS.pleisterZakKg)
     add({
       id: 'pleister', groep: 'afwerking', naam: 'Vochtbestendige pleister',
-      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.pleisterZakKg} kg`, prijsAantal: zakken,
+      nodig: kg, nodigEenheid: 'kg', aantal: zakken, verpakking: `zak à ${REGELS.pleisterZakKg} kg`, prijsAantal: zakken, inhoud: REGELS.pleisterZakKg, verpakkingSoort: 'zak',
       toelichting: `(${nl(o.plafond)} m² plafond + ${nl(o.wandBovenTegels)} m² wand) × ${nl(REGELS.pleisterKgPerM2, 1)} kg/m² = ${nl(kg, 1)} kg`,
     })
     const liter = m2 * REGELS.verfLPerM2
     const bussen = omhoog(liter / REGELS.verfBusL)
     add({
       id: 'verf', groep: 'afwerking', naam: 'Badkamerverf (anti-schimmel)',
-      nodig: liter, nodigEenheid: 'L', aantal: bussen, verpakking: `bus à ${nl(REGELS.verfBusL, 1)} L`, prijsAantal: bussen,
+      nodig: liter, nodigEenheid: 'L', aantal: bussen, verpakking: `bus à ${nl(REGELS.verfBusL, 1)} L`, prijsAantal: bussen, inhoud: REGELS.verfBusL, verpakkingSoort: 'bus',
       toelichting: `${nl(m2)} m² × 2 lagen × 0,1 L/m² = ${nl(liter, 1)} L`,
     })
   }

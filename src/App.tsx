@@ -4,6 +4,7 @@ import { Home } from './screens/Home'
 import { ProjectForm } from './screens/ProjectForm'
 import { ProjectScreen } from './screens/ProjectScreen'
 import { About } from './screens/About'
+import { Prices } from './screens/Prices'
 import { Toaster } from './components/Toast'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
       {route.naam === 'bewerken' && <ProjectForm key={route.id} id={route.id} />}
       {route.naam === 'project' && <ProjectScreen id={route.id} stap={route.stap} />}
       {route.naam === 'over' && <About />}
+      {route.naam === 'prijzen' && <Prices terugNaar={route.terugNaar} />}
       <Toaster />
     </Shell>
   )

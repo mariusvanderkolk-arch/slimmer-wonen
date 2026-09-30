@@ -11,12 +11,16 @@ export function inkoopTekst(p: Project, lijst: Inkooplijst): string {
     for (const r of g.regels) {
       const vink = p.afgevinkt[r.sleutel] ? '[x]' : '[ ]'
       const prijs = r.goedkoopste ? ` – ${euro(r.goedkoopste.totaal)} (${winkelNaam(r.goedkoopste.winkel)})` : ''
-      regels.push(`${vink} ${r.aantal}× ${r.naam}${r.spec ? ` ${r.spec}` : ''} – ${r.verpakking}${prijs}`)
+      const g = r.goedkoopste
+      regels.push(`${vink} ${g?.aantal ?? r.aantal}× ${r.naam}${r.spec ? ` ${r.spec}` : ''} – ${g?.verpakking ?? r.verpakking}${prijs}`)
     }
     regels.push('')
   }
   regels.push(`Totaal (goedkoopste per artikel): ${euro(lijst.goedkoopsteMix)}`)
-  regels.push('Let op: richtprijzen zijn voorbeeldprijzen, geen actuele winkelprijzen.')
+  const st = lijst.prijsStatus
+  if (st.eigen === 0) regels.push('Let op: richtprijzen zijn voorbeeldprijzen, geen actuele winkelprijzen.')
+  else if (st.voorbeeld > 0) regels.push(`Let op: ${st.voorbeeld} van ${st.eigen + st.voorbeeld} prijzen zijn nog voorbeeldprijzen.`)
+  else regels.push('Prijzen: eigen prijzen.')
   return regels.join('\n')
 }
 

@@ -7,6 +7,7 @@ export type Route =
   | { naam: 'home' }
   | { naam: 'nieuw' }
   | { naam: 'over' }
+  | { naam: 'prijzen'; terugNaar?: string }
   | { naam: 'bewerken'; id: string }
   | { naam: 'project'; id: string; stap: Stap }
 
@@ -16,6 +17,7 @@ export function parse(hash: string): Route {
   const delen = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
   if (delen[0] === 'nieuw') return { naam: 'nieuw' }
   if (delen[0] === 'over') return { naam: 'over' }
+  if (delen[0] === 'prijzen') return { naam: 'prijzen', terugNaar: delen[1] }
   if (delen[0] === 'project' && delen[1]) {
     if (delen[2] === 'bewerken') return { naam: 'bewerken', id: delen[1] }
     const stap = STAPPEN.includes(delen[2] as Stap) ? (delen[2] as Stap) : 'opmeten'

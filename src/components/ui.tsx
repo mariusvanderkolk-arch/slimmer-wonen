@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { Check, Info } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Check, CircleCheck, Info, X } from 'lucide-react'
 import { getal, leesGetal } from '../lib/format'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'gold' | 'danger'
@@ -202,14 +203,31 @@ export function Badge({ children, tone = 'sand', className = '' }: { children: R
   )
 }
 
-export function Notice({ children, title, className = '' }: { children: ReactNode; title?: string; className?: string }) {
+export function Notice({
+  children,
+  title,
+  className = '',
+  tone = 'gold',
+  action,
+}: {
+  children?: ReactNode
+  title?: ReactNode
+  className?: string
+  tone?: 'gold' | 'sage'
+  action?: ReactNode
+}) {
+  const t = tone === 'sage' ? 'border-[#d3dfcd] bg-[#eef3ea]' : 'border-gold-200 bg-gold-100/60'
+  const Icon = tone === 'sage' ? CircleCheck : Info
   return (
-    <div className={`flex gap-3 rounded-2xl border border-gold-200 bg-gold-100/60 px-4 py-3.5 text-[0.83rem] leading-relaxed text-ink-soft ${className}`}>
-      <Info className="mt-0.5 h-4.5 w-4.5 shrink-0 text-gold-600" />
-      <div>
-        {title && <p className="font-semibold text-ink">{title}</p>}
-        {children}
+    <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3.5 text-[0.83rem] leading-relaxed text-ink-soft sm:flex-row sm:items-center ${t} ${className}`}>
+      <div className="flex min-w-0 flex-1 gap-3">
+        <Icon className={`mt-0.5 h-4.5 w-4.5 shrink-0 ${tone === 'sage' ? 'text-sage' : 'text-gold-600'}`} />
+        <div className="min-w-0">
+          {title && <p className="font-semibold text-ink">{title}</p>}
+          {children}
+        </div>
       </div>
+      {action && <div className="shrink-0 pl-7.5 sm:pl-0">{action}</div>}
     </div>
   )
 }
@@ -221,5 +239,78 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
       <p className="tabnum mt-1 font-display text-[1.9rem] leading-none font-semibold text-ink">{value}</p>
       {sub && <p className="mt-1.5 text-xs text-ink-muted">{sub}</p>}
     </div>
+  )
+}
+
+/** Modaal venster: gecentreerd op desktop, als sheet van onderen op mobiel. */
+export function Dialog({
+  open,
+  onClose,
+  title,
+  sub,
+  children,
+  footer,
+}: {
+  open: boolean
+  onClose: () => void
+  title: ReactNode
+  sub?: ReactNode
+  children?: ReactNode
+  footer?: ReactNode
+}) {
+  useEffect(() => {
+    if (!open) return
+    const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', f)
+    const oud = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', f)
+      document.body.style.overflow = oud
+    }
+  }, [open, onClose])
+  if (!open) return null
+  return createPortal(
+    <div className="no-print fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] sm:items-center sm:p-6" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-sand-300/70 bg-paper shadow-lift sm:max-w-lg sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 border-b border-sand-200 px-5 pt-5 pb-4 sm:px-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-[1.6rem] leading-tight font-semibold">{title}</h2>
+            {sub && <p className="mt-0.5 text-[0.82rem] text-ink-muted">{sub}</p>}
+          </div>
+          <button type="button" aria-label="Sluiten" onClick={onClose} className="-mr-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-sand-100 hover:text-ink">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="px-5 py-5 sm:px-6">{children}</div>
+        {footer && (
+          <div className="flex flex-col-reverse gap-2 border-t border-sand-200 bg-sand-50/80 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-6">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/** Aan/uit-schakelaar. */
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? 'bg-gold-500' : 'bg-sand-300'}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
+    </button>
   )
 }

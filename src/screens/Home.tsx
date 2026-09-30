@@ -4,7 +4,7 @@ import { Badge, Button, Eyebrow } from '../components/ui'
 import { euro, getal, kortDatum } from '../lib/format'
 import { ga } from '../lib/router'
 import { useProjecten } from '../lib/store'
-import { berekenAlles } from '../lib/useCalc'
+import { useBerekening } from '../lib/useCalc'
 import { standaardAfmetingen, standaardScope } from '../lib/defaults'
 import type { Project } from '../lib/types'
 
@@ -110,7 +110,7 @@ export function Home() {
 }
 
 function ProjectKaart({ p }: { p: Project }) {
-  const { oppervlakken: o, inkoop } = berekenAlles(p)
+  const { oppervlakken: o, inkoop } = useBerekening(p)
   const aantal = Object.values(p.scope).filter(Boolean).length
   return (
     <button
