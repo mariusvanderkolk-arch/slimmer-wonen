@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource/cormorant-garamond/latin-500.css";
+@import "@fontsource/cormorant-garamond/latin-600.css";
+@import "@fontsource/cormorant-garamond/latin-700.css";
+@import "@fontsource/cormorant-garamond/latin-600-italic.css";
+
+@theme {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+
+  --color-paper: #fffdf9;
+  --color-sand-50: #f8f4ed;
+  --color-sand-100: #f5efe6;
+  --color-sand-200: #ede3d3;
+  --color-sand-300: #e2d5bf;
+  --color-sand-400: #d3c2a5;
+  --color-gold-100: #f4ead6;
+  --color-gold-200: #e9d8b3;
+  --color-gold-300: #dcc594;
+  --color-gold-400: #c8a96a;
+  --color-gold-500: #b8955a;
+  --color-gold-600: #9c7b43;
+  --color-gold-700: #7a5f33;
+  --color-ink: #2b2620;
+  --color-ink-soft: #564d42;
+  --color-ink-muted: #85796a;
+  --color-sage: #6f8a6a;
+  --color-rust: #b0573f;
+
+  --shadow-card: 0 1px 2px rgb(43 38 32 / 0.04), 0 10px 30px -18px rgb(43 38 32 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(43 38 32 / 0.05), 0 18px 40px -20px rgb(43 38 32 / 0.28);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 8rem;
+  }
+  body {
+    @apply bg-sand-100 text-ink font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    min-height: 100dvh;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    font-variant-numeric: lining-nums;
+  }
+  ::selection {
+    background: var(--color-gold-200);
+  }
+  input, select, textarea, button {
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-sand-300/70 bg-paper shadow-card;
+  }
+  .tabnum {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-gold-400), transparent);
+  }
+  .bg-grain {
+    background-image:
+      radial-gradient(1200px 500px at 85% -10%, rgb(220 197 148 / 0.28), transparent 60%),
+      radial-gradient(900px 400px at -10% 0%, rgb(255 253 249 / 0.9), transparent 60%);
+  }
+}
+
+.print-only { display: none; }
+
+@media print {
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  html { font-size: 12.5px; }
+  body { background: #fff !important; }
+  tfoot { display: table-row-group; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .card { box-shadow: none !important; border-color: #e2d5bf !important; }
+  .print-plain { box-shadow: none !important; border: 0 !important; padding: 0 !important; background: #fff !important; }
+  .avoid-break { break-inside: avoid; }
+  a { text-decoration: none; color: inherit; }
+}
