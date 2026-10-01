@@ -131,7 +131,7 @@ function OfferteSectie() {
   return (
     <Sectie id="offerte">
       <Card>
-        <CardHeader icon={<FileText className="h-5 w-5" />} title="Offertes" sub="Nummering, geldigheid en betaaltermijn voor nieuwe offertes." />
+        <CardHeader icon={<FileText className="h-5 w-5" />} title="Offertes en facturen" sub="Nummering, geldigheid en betaaltermijn. Factuurnummers staan los van offertenummers." />
         <div className="grid gap-4 p-5 sm:grid-cols-3 sm:p-6">
           <TextField label="Voorvoegsel nummer" value={b.nummerPrefix} onChange={(v) => zet({ nummerPrefix: v.slice(0, 12) })} />
           <NumberField label="Volgend volgnummer" decimals={0} value={b.volgnummer} onChange={(v) => zet({ volgnummer: Math.max(1, Math.round(v)) })} min={1} />
@@ -144,6 +144,9 @@ function OfferteSectie() {
             </span>
             . Bestaande offertes houden hun nummer.
           </p>
+          <TextField label="Voorvoegsel factuur" value={b.factuurPrefix} onChange={(v) => zet({ factuurPrefix: v.slice(0, 12) })} />
+          <NumberField label="Volgend factuurnummer" decimals={0} value={b.factuurVolgnummer} onChange={(v) => zet({ factuurVolgnummer: Math.max(b.factuurVolgnummer, Math.round(v)) })} min={1} hint="Kan alleen omhoog." />
+          <NumberField label="Betaaltermijn factuur" decimals={0} unit="dagen" value={b.betaalDagen} onChange={(v) => zet({ betaalDagen: Math.min(120, Math.max(1, Math.round(v))) })} min={1} />
           <div className="sm:col-span-3">
             <TextField label="Betaaltermijn / voorwaarden" value={b.betaaltermijn} onChange={(v) => zet({ betaaltermijn: v })} placeholder="Bijv. 30% bij opdracht, rest binnen 14 dagen na oplevering." />
           </div>
@@ -473,6 +476,7 @@ function BackupSectie() {
               <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.fotos}</span> foto's</li>
               <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.prijzen}</span> eigen prijzen</li>
               <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200">{s.bedrijf ? 'Met bedrijfsgegevens' : 'Geen bedrijfsgegevens'}</li>
+              <li className="col-span-2 rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.facturen}</span> facturen</li>
             </ul>
             <fieldset className="mt-5 space-y-2">
               <legend className="mb-2 text-[0.8rem] font-medium text-ink-soft">Hoe terugzetten?</legend>

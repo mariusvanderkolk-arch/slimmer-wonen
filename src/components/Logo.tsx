@@ -22,10 +22,10 @@ export function LogoMark({ className = 'h-9 w-9' }: { className?: string }) {
 
 export function Logo({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center ${compact ? 'gap-2' : 'gap-2.5'} ${className}`}>
       <LogoMark className={compact ? 'h-8 w-8' : 'h-10 w-10'} />
-      <span className="flex flex-col leading-none">
-        <span className={`font-display font-semibold tracking-tight whitespace-nowrap text-ink ${compact ? 'text-[1.3rem]' : 'text-[1.6rem]'}`}>
+      <span className={`flex flex-col leading-none ${compact ? 'max-[379px]:sr-only' : ''}`}>
+        <span className={`font-display font-semibold tracking-tight whitespace-nowrap text-ink ${compact ? 'text-[1.15rem] min-[400px]:text-[1.3rem]' : 'text-[1.6rem]'}`}>
           Slimmer <span className="text-gold-600">Wonen</span>
         </span>
         {!compact && (

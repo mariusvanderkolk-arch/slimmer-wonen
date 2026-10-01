@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { BadgeCheck, Building2, Copy, ExternalLink, Printer, Send } from 'lucide-react'
+import { BadgeCheck, ReceiptText, Building2, Copy, ExternalLink, Printer, Send } from 'lucide-react'
 import { OfferteDocument } from '../components/OfferteDocument'
 import { Badge, Button, Card, Notice, NumberField, Switch, TextField } from '../components/ui'
 import { toast } from '../components/Toast'
@@ -13,6 +13,9 @@ import { inkoopTekst, kopieer } from '../lib/share'
 import { projectStore } from '../lib/store'
 import { useBerekening } from '../lib/useCalc'
 import type { OfferteStatus, Project } from '../lib/types'
+import type { OfferteData } from '../lib/offerte'
+import { factuurVanOfferte, useFacturen } from '../lib/factuurStore'
+import { btwOverzicht, effectieveStatus, STATUS_LABEL } from '../lib/factuur'
 
 const datumIso = (iso: string) => datum(Date.parse(`${iso}T12:00:00`))
 
@@ -154,7 +157,54 @@ export function Quote({ p }: { p: Project }) {
             </Button>
           </div>
         </Card>
+        <FactuurKaart p={p} data={data} />
       </aside>
     </div>
+  )
+}
+
+function FactuurKaart({ p, data }: { p: Project; data: OfferteData }) {
+  const facturen = useFacturen().filter((f) => f.projectId === p.id)
+  const nu = vandaag()
+  return (
+    <Card className="no-print p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gold-100 text-gold-700 ring-1 ring-gold-200 ring-inset">
+          <ReceiptText className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-[0.98rem] font-semibold">Factuur</p>
+          <p className="mt-0.5 text-[0.82rem] leading-snug text-ink-muted">
+            Zet deze offerte{p.offerte?.akkoord ? '' : ' (ook zonder akkoord)'} om in een factuur met eigen nummer, btw-specificatie en betaalgegevens.
+          </p>
+        </div>
+      </div>
+      {facturen.length > 0 && (
+        <ul className="mt-3 divide-y divide-sand-200 rounded-xl ring-1 ring-sand-200">
+          {facturen.map((f) => (
+            <li key={f.id}>
+              <a href={`#/factuur/${f.id}`} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm hover:bg-sand-50">
+                <span className="tabnum font-semibold">{f.nummer}</span>
+                <span className="text-[0.78rem] text-ink-muted">{STATUS_LABEL[effectieveStatus(f, nu)]}</span>
+                <span className="tabnum ml-auto">{new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(btwOverzicht(f.regels).totaalIncl)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Button
+        variant={facturen.length ? 'secondary' : 'gold'}
+        className="mt-4 w-full"
+        icon={<ReceiptText className="h-4 w-4" />}
+        onClick={() => {
+          const f = factuurVanOfferte(data, p.id)
+          if (!f) return toast('Factuur opslaan mislukt: opslag vol.', 'fout')
+          toast(`Factuur ${f.nummer} aangemaakt`)
+          ga(`/factuur/${f.id}`)
+        }}
+      >
+        {facturen.length ? 'Nog een factuur maken' : 'Factuur maken'}
+      </Button>
+    </Card>
   )
 }

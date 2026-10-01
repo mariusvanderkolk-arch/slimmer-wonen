@@ -1,6 +1,6 @@
 /** Browserkant van de back-up: verzamelen uit localStorage/IndexedDB en terugzetten. */
 import { maakLokaleStore } from './lokaal'
-import { backupBestandsnaam, combineerBedrijf, combineerProjecten, maakBackup, type Backup, type BackupFoto, type ImportModus } from './backup'
+import { backupBestandsnaam, combineerBedrijf, combineerFacturen, combineerProjecten, maakBackup, type Backup, type BackupFoto, type ImportModus } from './backup'
 import { projectStore } from './store'
 import { prijsStore } from './prijsStore'
 import { bedrijfStore } from './bedrijf'
@@ -8,6 +8,7 @@ import { aiStore } from './aiStore'
 import { alleFotoIds, bewaarFoto, haalFoto, verwijderFoto } from './photos'
 import { voegSamen } from './eigenPrijzen'
 import { downloadBestand } from './download'
+import { factuurStore } from './factuurStore'
 
 export const backupStatus = maakLokaleStore<{ laatste: number | null; later: number | null }>('slimmer-wonen:backup:v1', () => ({ laatste: null, later: null }))
 
@@ -36,7 +37,7 @@ export async function exporteerAlles(): Promise<{ bytes: number; ontbrekend: num
     if (blob) fotos.push({ id, dataUrl: await naarDataUrl(blob) })
     else ontbrekend++
   }
-  const backup = maakBackup({ projecten, fotos, prijzen: prijsStore.alle(), bedrijf: bedrijfStore.get(), ai: aiStore.get() })
+  const backup = maakBackup({ projecten, fotos, prijzen: prijsStore.alle(), bedrijf: bedrijfStore.get(), ai: aiStore.get(), facturen: factuurStore.get() })
   const tekst = JSON.stringify(backup)
   downloadBestand(backupBestandsnaam(), tekst, 'application/json')
   backupStatus.set({ laatste: Date.now(), later: null })
@@ -50,6 +51,7 @@ export async function importeerBackup(b: Backup, modus: ImportModus): Promise<vo
   if (!projectStore.vervangAlles(projecten)) throw new Error('De projecten konden niet worden opgeslagen: de opslag van je browser is vol.')
   prijsStore.vervang(modus === 'vervangen' ? b.prijzen : voegSamen(prijsStore.alle(), b.prijzen))
   if (b.bedrijf) bedrijfStore.set(combineerBedrijf(bedrijfStore.get(), b.bedrijf))
+  if (!factuurStore.set(combineerFacturen(factuurStore.get(), b.facturen, modus))) throw new Error('De facturen konden niet worden opgeslagen: de opslag van je browser is vol.')
   if (b.ai) aiStore.update((i) => ({ ...i, provider: b.ai!.provider ?? i.provider, modellen: { ...i.modellen, ...b.ai!.modellen }, baseUrl: b.ai!.baseUrl ?? i.baseUrl }))
   if (modus === 'vervangen') {
     // foto's die nergens meer bij horen opruimen

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { backupHerinnering, combineerBedrijf, combineerProjecten, leesBackup, maakBackup, samenvatting } from './backup'
+import { backupHerinnering, combineerBedrijf, combineerFacturen, combineerProjecten, leesBackup, maakBackup, samenvatting } from './backup'
 import { nieuwProject } from './defaults'
 import { standaardBedrijf } from './bedrijf'
 import { standaardAiInstellingen } from './ai'
+import { normaliseerFactuur, volgendFactuurnummer } from './factuur'
 
 const a = nieuwProject({ id: 'a', naam: 'Badkamer A' })
 const b = nieuwProject({ id: 'b', naam: 'Toilet B', type: 'toilet' })
 const foto = { id: 'f1', dataUrl: 'data:image/jpeg;base64,QUJD' }
+const factuur = normaliseerFactuur({ id: 'fa1', nummer: 'F-2026-004', datum: '2026-10-01', status: 'verzonden', regels: [{ omschrijving: 'Tegels', excl: 100, btw: 21 }] })!
 
 describe('back-up maken en lezen', () => {
   it('rondreis behoudt projecten, foto’s, prijzen en bedrijf, zonder API-sleutels', () => {
@@ -17,6 +19,7 @@ describe('back-up maken en lezen', () => {
         prijzen: { tegellijm: { gamma: { prijs: 12.5, bijgewerkt: '2026-10-01T00:00:00.000Z' } } } as never,
         bedrijf: { ...standaardBedrijf(), naam: 'Van der Kolk' },
         ai: { ...standaardAiInstellingen(), sleutels: { gemini: 'GEHEIM' }, modellen: { gemini: 'gemini-2.5-flash' } },
+        facturen: [factuur],
       },
       new Date('2026-10-01T12:00:00Z'),
     )
@@ -28,7 +31,8 @@ describe('back-up maken en lezen', () => {
     expect(terug.fotos).toEqual([foto])
     expect(terug.bedrijf?.naam).toBe('Van der Kolk')
     expect(terug.ai?.modellen.gemini).toBe('gemini-2.5-flash')
-    expect(samenvatting(terug)).toEqual({ projecten: 2, eigen: 2, fotos: 1, prijzen: 1, bedrijf: true })
+    expect(samenvatting(terug)).toEqual({ projecten: 2, eigen: 2, fotos: 1, prijzen: 1, bedrijf: true, facturen: 1 })
+    expect(terug.facturen[0].nummer).toBe('F-2026-004')
   })
   it('weigert verkeerde bestanden met duidelijke melding', () => {
     expect(() => leesBackup('hallo')).toThrow(/geen JSON/)
@@ -64,6 +68,15 @@ describe('importeren', () => {
   })
   it('vervangen: alleen de back-up', () => {
     expect(combineerProjecten([a, b], [b], 'vervangen').map((p) => p.id)).toEqual(['b'])
+  })
+  it('facturen: samenvoegen of vervangen, en nummering loopt door na terugzetten', () => {
+    const ander = { ...factuur, id: 'fa2', nummer: 'F-2026-001' }
+    expect(combineerFacturen([ander], [factuur], 'samenvoegen').map((f) => f.id)).toEqual(['fa1', 'fa2'])
+    expect(combineerFacturen([ander], [factuur], 'vervangen').map((f) => f.id)).toEqual(['fa1'])
+    // teller op dit apparaat staat op 2, maar de back-up bevat al F-2026-004
+    const b = combineerBedrijf({ ...standaardBedrijf(), factuurVolgnummer: 2 }, { ...standaardBedrijf(), factuurVolgnummer: 5 })
+    expect(b.factuurVolgnummer).toBe(5)
+    expect(volgendFactuurnummer('F-', 2, ['F-2026-004'], 2026).nummer).toBe('F-2026-005')
   })
   it('offertenummer gaat nooit omlaag', () => {
     const huidig = { ...standaardBedrijf(), volgnummer: 9 }

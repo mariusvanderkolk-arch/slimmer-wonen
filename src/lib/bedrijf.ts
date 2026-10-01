@@ -20,6 +20,11 @@ export interface Bedrijf {
   /** geldigheid van een offerte in dagen */
   geldigheidDagen: number
   betaaltermijn: string
+  /** factuurnummering, los van offertes */
+  factuurPrefix: string
+  factuurVolgnummer: number
+  /** betaaltermijn factuur in dagen */
+  betaalDagen: number
 }
 
 export const standaardBedrijf = (): Bedrijf => ({
@@ -36,6 +41,9 @@ export const standaardBedrijf = (): Bedrijf => ({
   volgnummer: 1,
   geldigheidDagen: 30,
   betaaltermijn: 'Betaling binnen 14 dagen na oplevering.',
+  factuurPrefix: 'F-',
+  factuurVolgnummer: 1,
+  betaalDagen: 14,
 })
 
 export const bedrijfStore = maakLokaleStore<Bedrijf>('slimmer-wonen:bedrijf:v1', standaardBedrijf)

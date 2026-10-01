@@ -7,6 +7,7 @@ import { standaardBedrijf, type Bedrijf } from './bedrijf'
 import type { EigenPrijzen } from './eigenPrijzen'
 import type { AiInstellingen } from './ai'
 import type { Project } from './types'
+import { normaliseerFactuur, type Factuur } from './factuur'
 
 export const BACKUP_VERSIE = 2
 
@@ -24,16 +25,17 @@ export interface Backup {
   fotos: BackupFoto[]
   prijzen: EigenPrijzen
   bedrijf?: Bedrijf
+  facturen: Factuur[]
   /** AI-voorkeuren zonder sleutels */
   ai?: Omit<AiInstellingen, 'sleutels'>
 }
 
 export function maakBackup(
-  d: { projecten: Project[]; fotos: BackupFoto[]; prijzen: EigenPrijzen; bedrijf?: Bedrijf; ai?: AiInstellingen },
+  d: { projecten: Project[]; fotos: BackupFoto[]; prijzen: EigenPrijzen; bedrijf?: Bedrijf; ai?: AiInstellingen; facturen?: Factuur[] },
   nu = new Date(),
 ): Backup {
   const ai = d.ai ? { provider: d.ai.provider, modellen: d.ai.modellen, baseUrl: d.ai.baseUrl } : undefined
-  return { app: 'slimmer-wonen', type: 'backup', versie: BACKUP_VERSIE, gemaakt: nu.toISOString(), projecten: d.projecten, fotos: d.fotos, prijzen: d.prijzen, bedrijf: d.bedrijf, ai }
+  return { app: 'slimmer-wonen', type: 'backup', versie: BACKUP_VERSIE, gemaakt: nu.toISOString(), projecten: d.projecten, fotos: d.fotos, prijzen: d.prijzen, bedrijf: d.bedrijf, facturen: d.facturen ?? [], ai }
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)
@@ -74,8 +76,16 @@ export function leesBackup(tekst: string): Backup {
     fotos,
     prijzen: isObj(j.prijzen) ? (j.prijzen as EigenPrijzen) : {},
     bedrijf,
+    facturen: (Array.isArray(j.facturen) ? j.facturen : []).map(normaliseerFactuur).filter((f): f is Factuur => f != null),
     ai,
   }
+}
+
+/** Facturen samenvoegen (op id, bestand wint) of vervangen. */
+export function combineerFacturen(huidig: Factuur[], uitBestand: Factuur[], modus: ImportModus): Factuur[] {
+  if (modus === 'vervangen') return uitBestand
+  const ids = new Set(uitBestand.map((f) => f.id))
+  return [...uitBestand, ...huidig.filter((f) => !ids.has(f.id))]
 }
 
 export type ImportModus = 'samenvoegen' | 'vervangen'
@@ -90,13 +100,17 @@ export function combineerProjecten(huidig: Project[], uitBestand: Project[], mod
 /** Bedrijfsprofiel na import; het volgnummer gaat nooit omlaag (geen dubbele offertenummers). */
 export function combineerBedrijf(huidig: Bedrijf, uitBestand: Bedrijf | undefined): Bedrijf {
   if (!uitBestand) return huidig
-  return { ...uitBestand, volgnummer: Math.max(huidig.volgnummer, uitBestand.volgnummer) }
+  return {
+    ...uitBestand,
+    volgnummer: Math.max(huidig.volgnummer, uitBestand.volgnummer),
+    factuurVolgnummer: Math.max(huidig.factuurVolgnummer || 1, uitBestand.factuurVolgnummer || 1),
+  }
 }
 
 export function samenvatting(b: Backup) {
   const eigen = b.projecten.filter((p) => !p.voorbeeld).length
   const prijzen = Object.values(b.prijzen).reduce((n, r) => n + Object.keys(r ?? {}).length, 0)
-  return { projecten: b.projecten.length, eigen, fotos: b.fotos.length, prijzen, bedrijf: !!b.bedrijf?.naam }
+  return { projecten: b.projecten.length, eigen, fotos: b.fotos.length, prijzen, bedrijf: !!b.bedrijf?.naam, facturen: b.facturen.length }
 }
 
 export const backupBestandsnaam = (nu = new Date()) => `slimmer-wonen-backup-${nu.toISOString().slice(0, 10)}.json`

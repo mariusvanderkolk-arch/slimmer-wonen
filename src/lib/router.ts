@@ -12,6 +12,8 @@ export type Route =
   | { naam: 'offerte-bekijken'; data: string }
   | { naam: 'bewerken'; id: string }
   | { naam: 'project'; id: string; stap: Stap }
+  | { naam: 'facturen' }
+  | { naam: 'factuur'; id: string }
 
 const STAPPEN: Stap[] = ['opmeten', 'berekening', 'inkoop', 'offerte', 'planning']
 
@@ -19,6 +21,8 @@ export function parse(hash: string): Route {
   const delen = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
   if (delen[0] === 'nieuw') return { naam: 'nieuw' }
   if (delen[0] === 'over') return { naam: 'over' }
+  if (delen[0] === 'facturen') return { naam: 'facturen' }
+  if (delen[0] === 'factuur' && delen[1]) return { naam: 'factuur', id: delen[1] }
   if (delen[0] === 'prijzen') return { naam: 'prijzen', terugNaar: delen[1] }
   if (delen[0] === 'instellingen') return { naam: 'instellingen', sectie: delen[1] }
   if (delen[0] === 'offerte-bekijken') return { naam: 'offerte-bekijken', data: delen.slice(1).join('/') }
