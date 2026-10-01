@@ -27,6 +27,11 @@ export const CATALOGUS: CatalogusItem[] = [
   { id: 'isolatieplaat', groep: 'vloerverwarming', naam: 'Isolatieplaat XPS 6 mm', inhoud: { standaard: REGELS.isolatieplaatM2, eenheid: 'm²', soort: 'plaat' } },
   { id: 'wandtegel', groep: 'tegels', naam: 'Wandtegels', eenheid: 'per m²', toelichting: 'm² per doos stel je per project in' },
   { id: 'vloertegel', groep: 'tegels', naam: 'Vloertegels', eenheid: 'per m²', toelichting: 'm² per doos stel je per project in' },
+  { id: 'laminaat', groep: 'vloer', naam: 'Laminaat (klik, AC4)', eenheid: 'per m²', toelichting: 'm² per pak stel je per project in' },
+  { id: 'pvc', groep: 'vloer', naam: 'PVC-klikvloer', eenheid: 'per m²', toelichting: 'm² per pak stel je per project in' },
+  { id: 'ondervloer', groep: 'vloer', naam: 'Ondervloer', inhoud: { standaard: REGELS.ondervloerRolM2, eenheid: 'm²', soort: 'rol' } },
+  { id: 'plint', groep: 'vloer', naam: 'Plinten MDF wit', inhoud: { standaard: REGELS.plintLengteM, eenheid: 'm', soort: 'lengte' } },
+  { id: 'montagekit', groep: 'vloer', naam: 'Montagekit voor plinten', inhoud: { standaard: REGELS.kitKokerMl, eenheid: 'ml', soort: 'koker' } },
   { id: 'tegellijm', groep: 'lijm-voeg', naam: 'Flexibele tegellijm (C2TE S1)', inhoud: { standaard: REGELS.lijmZakKg, eenheid: 'kg', soort: 'zak' } },
   { id: 'voegmiddel', groep: 'lijm-voeg', naam: 'Flexibel voegmiddel', inhoud: { standaard: REGELS.voegZakKg, eenheid: 'kg', soort: 'zak' } },
   { id: 'tegelkruisjes', groep: 'lijm-voeg', naam: 'Tegelkruisjes / levelclips', eenheid: 'per zak' },
@@ -44,6 +49,7 @@ export const CATALOGUS: CatalogusItem[] = [
   { id: 'wastafelkraan', groep: 'sanitair', naam: 'Wastafelkraan', eenheid: 'per stuk' },
   { id: 'spiegel', groep: 'sanitair', naam: 'Spiegel met verlichting', eenheid: 'per stuk' },
   { id: 'sifon', groep: 'sanitair', naam: 'Sifon & afvoerset', eenheid: 'per stuk' },
+  { id: 'fontein', groep: 'sanitair', naam: 'Fonteinset compleet', eenheid: 'per stuk' },
 ]
 
 export const catalogusItem = (id: ProductId) => CATALOGUS.find((c) => c.id === id)

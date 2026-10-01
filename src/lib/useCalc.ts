@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
-import { berekenArbeid, berekenMaterialen, berekenOppervlakken } from './calc'
+import { berekenArbeid, berekenMaterialen, oppervlakkenVan } from './calc'
 import type { PrijsBron } from './prices'
 import { usePrijsBron } from './prijsStore'
 import { maakInkooplijst } from './shopping'
 import type { Project } from './types'
 
 export function berekenAlles(p: Project, bron: PrijsBron) {
-  const oppervlakken = berekenOppervlakken(p.afmetingen, p.scope)
+  const oppervlakken = oppervlakkenVan(p)
   const materialen = berekenMaterialen(p)
   const inkoop = maakInkooplijst(materialen, bron)
   const arbeid = berekenArbeid(p)

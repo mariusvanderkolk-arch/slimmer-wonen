@@ -1,7 +1,7 @@
 import { Calculator, ChevronDown, Ruler } from 'lucide-react'
 import { Card, CardHeader, Stat } from '../components/ui'
 import { GROEP_ICONS } from '../components/groepIcons'
-import { GROEPEN, REGELS } from '../lib/calc'
+import { GROEPEN, REGELS, effectieveScope } from '../lib/calc'
 import { getal } from '../lib/format'
 import { useBerekening } from '../lib/useCalc'
 import type { Project } from '../lib/types'
@@ -9,7 +9,22 @@ import type { Project } from '../lib/types'
 export function Calculation({ p }: { p: Project }) {
   const { oppervlakken: o, materialen } = useBerekening(p)
   const groepen = GROEPEN.map((g) => ({ ...g, regels: materialen.filter((m) => m.groep === g.id) })).filter((g) => g.regels.length)
-  const rijen: [string, string, boolean?][] = [
+  const sc = effectieveScope(p)
+  const type = p.type
+  const rijen: [string, string, boolean?][] = type === 'vloer'
+    ? [
+        ['Omtrek vloer', `${getal(o.omtrek)} m`],
+        ['Af: deuren', `− ${getal(o.deurBreedte)} m`],
+        ['Plinten (netto)', `${getal(o.plintLengte)} m`, true],
+        ['Vloer', `${getal(o.vloer)} m²`, true],
+      ]
+    : type === 'keuken'
+      ? [
+          ['Omtrek vloer', `${getal(o.omtrek)} m`],
+          [`Spatwand (${getal(p.afmetingen.spatwand.lengte)} × ${getal(p.afmetingen.spatwand.hoogte)} m)`, `${getal(o.spatwand)} m²`, true],
+          ['Vloer', `${getal(o.vloer)} m²`, true],
+        ]
+      : [
     ['Omtrek vloer', `${getal(o.omtrek)} m`],
     [`Wand tot tegelhoogte (${getal(o.tegelhoogte)} m)`, `${getal(o.wandBruto)} m²`],
     ['Af: deuren en ramen in tegelzone', `− ${getal(o.openingenAftrek)} m²`],
@@ -17,14 +32,18 @@ export function Calculation({ p }: { p: Project }) {
     ['Vloer', `${getal(o.vloer)} m²`, true],
     ['Plafond', `${getal(o.plafond)} m²`],
     ['Wand boven de tegels', `${getal(o.wandBovenTegels)} m²`],
-    ...(p.scope.waterdicht ? ([['Waterdicht te maken (vloer + douchewand)', `${getal(o.waterdichtOppervlak)} m²`]] as [string, string][]) : []),
+    ...(sc.waterdicht ? ([['Waterdicht te maken (vloer + douchewand)', `${getal(o.waterdichtOppervlak)} m²`]] as [string, string][]) : []),
   ]
 
   return (
     <div className="space-y-5">
       <Card className="px-5 py-5 sm:px-7 sm:py-6">
         <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4">
-          <Stat label="Wand netto" value={<>{getal(o.wandNetto, 1)}<span className="ml-1 font-sans text-[0.8rem] font-medium text-ink-muted">m²</span></>} sub={`bruto ${getal(o.wandBruto, 1)} m²`} />
+          {type === 'vloer' ? (
+            <Stat label="Plinten" value={<>{getal(o.plintLengte, 1)}<span className="ml-1 font-sans text-[0.8rem] font-medium text-ink-muted">m</span></>} sub={`omtrek ${getal(o.omtrek, 1)} m`} />
+          ) : (
+            <Stat label={type === 'keuken' ? 'Spatwand' : 'Wand netto'} value={<>{getal(o.wandNetto, 1)}<span className="ml-1 font-sans text-[0.8rem] font-medium text-ink-muted">m²</span></>} sub={type === 'keuken' ? 'achter het aanrecht' : `bruto ${getal(o.wandBruto, 1)} m²`} />
+          )}
           <Stat label="Vloer" value={<>{getal(o.vloer, 1)}<span className="ml-1 font-sans text-[0.8rem] font-medium text-ink-muted">m²</span></>} sub={`${getal(p.afmetingen.lengte)} × ${getal(p.afmetingen.breedte)} m`} />
           <Stat label="Snijverlies" value={<>{getal(p.snijverlies, 1)}<span className="ml-1 font-sans text-[0.8rem] font-medium text-ink-muted">%</span></>} sub="instelbaar bij Opmeten" />
           <Stat label="Materialen" value={materialen.length} sub={`in ${groepen.length} groepen`} />
@@ -60,6 +79,9 @@ export function Calculation({ p }: { p: Project }) {
               <li>Egaliseren: {getal(REGELS.egaliseerKgPerM2PerMm, 1)} kg per m² per mm laagdikte.</li>
               <li>Kit: ca. {REGELS.kitMeterPerKoker} m voeg per koker van 310 ml.</li>
               <li>Vloerverwarming: mat op ca. 70% van de vloer (vrij van douche, toilet en meubel).</li>
+              <li>Keuken: spatwand = lengte werkblad × hoogte; kit langs werkblad en beide zijkanten.</li>
+              <li>Laminaat/PVC: vloer + snijverlies, afgerond op hele pakken. Ondervloer: + 5% overlap, rol à {REGELS.ondervloerRolM2} m².</li>
+              <li>Plinten: omtrek − deuren + 10% zaagverlies, lengtes van {getal(REGELS.plintLengteM, 1)} m; montagekit ca. {REGELS.montagekitMPerKoker} m per koker.</li>
             </ul>
           </details>
         </div>

@@ -3,7 +3,8 @@ import { Copy, Printer } from 'lucide-react'
 import { LogoMark } from '../components/Logo'
 import { Button, Card, NumberField } from '../components/ui'
 import { toast } from '../components/Toast'
-import { SCOPE_ITEMS } from '../lib/defaults'
+import { effectieveScope } from '../lib/calc'
+import { ruimteLabel, scopeItems } from '../lib/ruimtes'
 import { datum, euro, getal } from '../lib/format'
 import { winkelNaam } from '../lib/prices'
 import { inkoopTekst, kopieer } from '../lib/share'
@@ -16,7 +17,8 @@ export function Quote({ p }: { p: Project }) {
   const [metArbeid, setMetArbeid] = useState(true)
   const nummer = `SW-${new Date(p.createdAt).getFullYear()}-${p.id.replace(/-/g, '').slice(0, 4).toUpperCase()}`
   const totaal = inkoop.goedkoopsteMix + (metArbeid ? arbeidKosten : 0)
-  const werk = SCOPE_ITEMS.filter((i) => p.scope[i.key])
+  const sc = effectieveScope(p)
+  const werk = scopeItems(p.type).filter((i) => sc[i.key])
   const st = inkoop.prijsStatus
   const gemengd = st.eigen > 0 && st.voorbeeld > 0
   const prijsTekst =
@@ -64,7 +66,7 @@ export function Quote({ p }: { p: Project }) {
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-gold-700">Project</p>
               <p className="mt-1.5 font-semibold">{p.naam}</p>
               <p className="text-sm text-ink-soft">
-                Badkamer · {getal(p.afmetingen.lengte)} × {getal(p.afmetingen.breedte)} × {getal(p.afmetingen.hoogte)} m
+                {ruimteLabel(p.type)} · {getal(p.afmetingen.lengte)} × {getal(p.afmetingen.breedte)} × {getal(p.afmetingen.hoogte)} m
               </p>
             </div>
           </div>
@@ -86,15 +88,20 @@ export function Quote({ p }: { p: Project }) {
           <section className="avoid-break mt-8">
             <h3 className="font-display text-[1.35rem] font-semibold">Oppervlakken</h3>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                ['Wandtegels', o.wandNetto],
-                ['Vloer', o.vloer],
-                ['Waterdicht', p.scope.waterdicht ? o.waterdichtOppervlak : 0],
-                ['Stucwerk', p.scope.stucwerk ? o.plafond + o.wandBovenTegels : 0],
-              ].map(([k, v]) => (
+              {(p.type === 'vloer'
+                ? [['Vloer', o.vloer, 'm²'], ['Plinten', sc.plinten ? o.plintLengte : 0, 'm'], ['Omtrek', o.omtrek, 'm'], ['Snijverlies', p.snijverlies, '%']]
+                : p.type === 'keuken'
+                  ? [['Spatwand', o.spatwand, 'm²'], ['Vloer', o.vloer, 'm²'], ['Werkblad', p.afmetingen.spatwand.lengte, 'm'], ['Snijverlies', p.snijverlies, '%']]
+                  : [
+                      ['Wandtegels', o.wandNetto, 'm²'],
+                      ['Vloer', o.vloer, 'm²'],
+                      p.type === 'toilet' ? ['Tegelhoogte', o.tegelhoogte, 'm'] : ['Waterdicht', sc.waterdicht ? o.waterdichtOppervlak : 0, 'm²'],
+                      ['Stucwerk', sc.stucwerk ? o.plafond + o.wandBovenTegels : 0, 'm²'],
+                    ]
+              ).map(([k, v, e]) => (
                 <div key={k as string} className="rounded-xl bg-sand-50 px-3.5 py-3 ring-1 ring-sand-200">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">{k}</p>
-                  <p className="tabnum mt-0.5 font-semibold">{getal(v as number)} m²</p>
+                  <p className="tabnum mt-0.5 font-semibold">{getal(v as number)} {e}</p>
                 </div>
               ))}
             </div>

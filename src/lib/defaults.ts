@@ -1,71 +1,51 @@
-import type { Afmetingen, Project, Scope, ScopeKey, TileSpec } from './types'
+import { ALLE_SCOPE_KEYS, ruimte, scopeItems, scopeVoor } from './ruimtes'
+import type { Afmetingen, LegvloerSpec, Project, ProjectType, Scope, TileSpec } from './types'
 
 export const uid = () =>
   (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
 
-export interface ScopeItem {
-  key: ScopeKey
-  label: string
-  omschrijving: string
-  optioneel?: boolean
-}
+export type { ScopeItem } from './ruimtes'
 
-export const SCOPE_ITEMS: ScopeItem[] = [
-  { key: 'sloopwerk', label: 'Sloopwerk & afvoer', omschrijving: 'Oude tegels en sanitair verwijderen' },
-  { key: 'egaliseren', label: 'Vloer egaliseren', omschrijving: 'Vlakke ondergrond voor de vloertegels' },
-  { key: 'waterdicht', label: 'Waterdicht maken', omschrijving: 'Vloer en douchewanden afdichten' },
-  { key: 'vloerverwarming', label: 'Vloerverwarming', omschrijving: 'Elektrische mat met thermostaat', optioneel: true },
-  { key: 'wandtegels', label: 'Wandtegels', omschrijving: 'Inclusief lijm, voeg en profielen' },
-  { key: 'vloertegels', label: 'Vloertegels', omschrijving: 'Inclusief lijm en voeg' },
-  { key: 'inloopdouche', label: 'Inloopdouche', omschrijving: 'Glaswand, douchegoot en regendouche' },
-  { key: 'toilet', label: 'Hangtoilet', omschrijving: 'Inbouwreservoir en bedieningsplaat' },
-  { key: 'wastafelmeubel', label: 'Wastafelmeubel', omschrijving: 'Meubel, kraan, spiegel en sifon' },
-  { key: 'kitwerk', label: 'Kitten & afwerken', omschrijving: 'Sanitairkit langs naden en hoeken' },
-  { key: 'stucwerk', label: 'Stucwerk & schilderen', omschrijving: 'Plafond en wand boven de tegels' },
-]
+/** Checklist van de badkamer (oorspronkelijke lijst; gebruik `scopeItems(type)` voor andere ruimtes). */
+export const SCOPE_ITEMS = scopeItems('badkamer')
 
-export const standaardScope = (): Scope => ({
-  sloopwerk: true,
-  egaliseren: true,
-  waterdicht: true,
-  vloerverwarming: false,
-  wandtegels: true,
-  vloertegels: true,
-  inloopdouche: true,
-  toilet: true,
-  wastafelmeubel: true,
-  kitwerk: true,
-  stucwerk: false,
-})
+export const standaardScope = (): Scope => scopeVoor('badkamer')
 
-export const standaardAfmetingen = (): Afmetingen => ({
+export const standaardAfmetingen = (type: ProjectType = 'badkamer'): Afmetingen => ({
   lengte: 2.5,
   breedte: 2.0,
   hoogte: 2.6,
   tegelhoogte: 2.6,
-  openingen: [{ id: uid(), type: 'deur', breedte: 0.83, hoogte: 2.11, vanafVloer: 0 }],
+  openingen: [{ id: uid(), type: 'deur', breedte: type === 'toilet' ? 0.73 : 0.83, hoogte: type === 'toilet' ? 2.01 : 2.11, vanafVloer: 0 }],
   douche: { breedte: 0.9, diepte: 1.2 },
   egaliseerDikte: 3,
+  spatwand: { lengte: 3.0, hoogte: 0.6 },
+  ...ruimte(type).afmetingen,
 })
+
+export const LEGVLOER_PAK: Record<LegvloerSpec['soort'], number> = { laminaat: 2.22, pvc: 2.16 }
+export const standaardLegvloer = (): LegvloerSpec => ({ soort: 'laminaat', m2PerPak: LEGVLOER_PAK.laminaat })
 
 export const standaardWandtegel = (): TileSpec => ({ lengte: 60, breedte: 30, m2PerDoos: 1.44, dikte: 9, voeg: 2 })
 export const standaardVloertegel = (): TileSpec => ({ lengte: 60, breedte: 60, m2PerDoos: 1.44, dikte: 10, voeg: 3 })
 
 export function nieuwProject(velden: Partial<Project> = {}): Project {
   const nu = Date.now()
+  const type = velden.type ?? 'badkamer'
   return {
     id: uid(),
     naam: '',
     klant: '',
     adres: '',
-    type: 'badkamer',
+    type,
     createdAt: nu,
     updatedAt: nu,
-    scope: standaardScope(),
-    afmetingen: standaardAfmetingen(),
+    scope: scopeVoor(type),
+    afmetingen: standaardAfmetingen(type),
     wandtegel: standaardWandtegel(),
     vloertegel: standaardVloertegel(),
-    snijverlies: 10,
+    legvloer: standaardLegvloer(),
+    snijverlies: ruimte(type).snijverlies,
     uurtarief: 60,
     fotos: [],
     afgevinkt: {},
@@ -74,12 +54,13 @@ export function nieuwProject(velden: Partial<Project> = {}): Project {
   }
 }
 
-/** Twee voorbeeldprojecten, zodat de demo meteen iets laat zien. */
+/** Voorbeeldprojecten, zodat de demo meteen iets laat zien. */
 export function voorbeeldProjecten(): Project[] {
   const dag = 86_400_000
   const nu = Date.now()
   return [
     nieuwProject({
+      voorbeeldId: 'badkamer-jansen',
       naam: 'Badkamer Jansen',
       klant: 'Fam. Jansen',
       adres: 'Lindenlaan 12, Amersfoort',
@@ -98,6 +79,7 @@ export function voorbeeldProjecten(): Project[] {
         ],
         douche: { breedte: 1.0, diepte: 1.2 },
         egaliseerDikte: 3,
+        spatwand: { lengte: 3, hoogte: 0.6 },
       },
       wandtegel: { lengte: 60, breedte: 30, m2PerDoos: 1.44, dikte: 9, voeg: 2 },
       vloertegel: { lengte: 60, breedte: 60, m2PerDoos: 1.44, dikte: 10, voeg: 3 },
@@ -105,6 +87,7 @@ export function voorbeeldProjecten(): Project[] {
       notities: 'Klant wil matte, lichte tegels. Afvoer toilet verplaatsen richting raamzijde.',
     }),
     nieuwProject({
+      voorbeeldId: 'douche-de-vries',
       naam: 'Toilet & douche De Vries',
       klant: 'M. de Vries',
       adres: 'Havenstraat 4, Zwolle',
@@ -112,6 +95,7 @@ export function voorbeeldProjecten(): Project[] {
       updatedAt: nu - 4 * dag,
       voorbeeld: true,
       scope: {
+        ...scopeVoor('badkamer'),
         sloopwerk: true,
         egaliseren: false,
         waterdicht: true,
@@ -132,11 +116,74 @@ export function voorbeeldProjecten(): Project[] {
         openingen: [{ id: uid(), type: 'deur', breedte: 0.78, hoogte: 2.01, vanafVloer: 0 }],
         douche: { breedte: 0.9, diepte: 0.9 },
         egaliseerDikte: 3,
+        spatwand: { lengte: 3, hoogte: 0.6 },
       },
       wandtegel: { lengte: 20, breedte: 20, m2PerDoos: 1.0, dikte: 8, voeg: 2 },
       vloertegel: { lengte: 30, breedte: 30, m2PerDoos: 1.08, dikte: 9, voeg: 3 },
       snijverlies: 12,
       notities: 'Halfhoog betegelen, daarboven stucwerk en vochtbestendige verf.',
     }),
+    nieuwProject({
+      voorbeeldId: 'keuken-bakker',
+      type: 'keuken',
+      naam: 'Keuken Bakker',
+      klant: 'S. Bakker',
+      adres: 'Kerkweg 31, Utrecht',
+      createdAt: nu - 3 * dag,
+      updatedAt: nu - 2 * dag,
+      voorbeeld: true,
+      afmetingen: {
+        ...standaardAfmetingen('keuken'),
+        lengte: 4.2,
+        breedte: 3.1,
+        openingen: [{ id: uid(), type: 'deur', breedte: 0.83, hoogte: 2.11, vanafVloer: 0 }],
+        spatwand: { lengte: 3.4, hoogte: 0.65 },
+        egaliseerDikte: 4,
+      },
+      wandtegel: { lengte: 30, breedte: 7.5, m2PerDoos: 0.5, dikte: 8, voeg: 2 },
+      vloertegel: { lengte: 120, breedte: 60, m2PerDoos: 1.44, dikte: 10, voeg: 3 },
+      notities: 'Spatwand in zellige-look, liggend verband. Vloer doorleggen tot onder het keukenblok.',
+    }),
+    nieuwProject({
+      voorbeeldId: 'woonkamer-visser',
+      type: 'vloer',
+      naam: 'Woonkamer Visser',
+      klant: 'Fam. Visser',
+      adres: 'Molenstraat 8, Deventer',
+      createdAt: nu - 9 * dag,
+      updatedAt: nu - 5 * dag,
+      voorbeeld: true,
+      scope: { ...scopeVoor('vloer'), egaliseren: true },
+      afmetingen: {
+        ...standaardAfmetingen('vloer'),
+        lengte: 7.2,
+        breedte: 4.6,
+        openingen: [
+          { id: uid(), type: 'deur', breedte: 0.83, hoogte: 2.11, vanafVloer: 0 },
+          { id: uid(), type: 'deur', breedte: 1.6, hoogte: 2.11, vanafVloer: 0 },
+        ],
+        egaliseerDikte: 2,
+      },
+      legvloer: { soort: 'pvc', m2PerPak: LEGVLOER_PAK.pvc },
+      notities: 'PVC visgraat-look in eiken naturel. Plinten wit, 7 cm hoog.',
+    }),
   ]
+}
+
+/** Vult ontbrekende velden aan (oudere projecten, back-ups) zodat de app er veilig mee kan rekenen. */
+export function normaliseerProject(ruw: Partial<Project> & { id: string }): Project {
+  const type: ProjectType = ruw.type && ['badkamer', 'toilet', 'keuken', 'vloer'].includes(ruw.type) ? ruw.type : 'badkamer'
+  const basis = nieuwProject({ type })
+  const scope = { ...Object.fromEntries(ALLE_SCOPE_KEYS.map((k) => [k, false])), ...(ruw.scope ?? basis.scope) } as Scope
+  return {
+    ...basis,
+    ...ruw,
+    type,
+    scope,
+    afmetingen: { ...basis.afmetingen, ...ruw.afmetingen, openingen: ruw.afmetingen?.openingen ?? basis.afmetingen.openingen },
+    legvloer: { ...basis.legvloer, ...ruw.legvloer },
+    fotos: ruw.fotos ?? [],
+    afgevinkt: ruw.afgevinkt ?? {},
+    notities: ruw.notities ?? '',
+  }
 }

@@ -84,6 +84,12 @@ export const VOORBEELD_PRIJSTABEL: Record<ProductId, [number | null, number | nu
   sifon: [19.99, 21.99, 18.95, 19.49],
   bigbag: [12.99, 11.99, 10.95, null],
   afdekset: [24.99, 22.99, null, 26.99],
+  fontein: [119.0, 109.0, 99.95, 124.0],
+  laminaat: [17.99, 16.49, 14.95, 18.49],
+  pvc: [29.99, 31.99, 27.95, 32.49],
+  ondervloer: [24.99, 22.99, 21.95, 25.99],
+  plint: [5.99, 5.49, 4.95, 6.29],
+  montagekit: [7.49, 6.99, 6.95, 7.99],
 }
 
 export const VOORBEELD_PEILDATUM = '2026-09-01'
@@ -103,5 +109,5 @@ export const voorbeeldPrijsBron: PrijsBron = {
 }
 
 /** Producten die per m² geprijsd worden (overige per verpakking/stuk). */
-const PER_M2: ProductId[] = ['wandtegel', 'vloertegel', 'vv-mat']
+const PER_M2: ProductId[] = ['wandtegel', 'vloertegel', 'vv-mat', 'laminaat', 'pvc']
 export const prijsEenheid = (id: ProductId) => (PER_M2.includes(id) ? 'm²' : 'st.')

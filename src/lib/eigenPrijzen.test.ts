@@ -1,3 +1,4 @@
+import { CATALOGUS } from './catalogus'
 import { describe, expect, it } from 'vitest'
 import { berekenMaterialen } from './calc'
 import { voorbeeldProjecten } from './defaults'
@@ -144,7 +145,7 @@ describe('export en import', () => {
 
   it('CSV bevat alle artikelen × 4 winkels en komt ongewijzigd terug', () => {
     const csv = naarCsv(eigen, voorbeeldPrijsBron)
-    expect(parseCsv(csv)).toHaveLength(1 + 29 * 4)
+    expect(parseCsv(csv)).toHaveLength(1 + CATALOGUS.length * 4)
     expect(csv).toContain('18,25')
     expect(vanCsv(csv, voorbeeldPrijsBron)).toEqual(eigen)
   })

@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Calculator, Camera, FileText, MapPin, Pencil, Sh
 import { Badge, Button } from '../components/ui'
 import { ga, type Stap } from '../lib/router'
 import { useProject } from '../lib/store'
+import { ruimteLabel } from '../lib/ruimtes'
 import { NietGevonden } from './ProjectForm'
 import { Measure } from './Measure'
 import { Calculation } from './Calculation'
@@ -35,7 +36,7 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
             </Button>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Badge tone="gold">Badkamer</Badge>
+            <Badge tone="gold">{ruimteLabel(p.type)}</Badge>
             {p.voorbeeld && <Badge>Voorbeeldproject</Badge>}
           </div>
           <h1 className="mt-2 text-[2.1rem] leading-[1.05] font-semibold sm:text-[2.7rem]">{p.naam}</h1>

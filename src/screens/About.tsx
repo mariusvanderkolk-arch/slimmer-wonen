@@ -11,7 +11,7 @@ const BLOKKEN = [
     titel: 'Berekeningen',
     badge: <Badge tone="sage">Werkt</Badge>,
     tekst:
-      'Oppervlakken en materialen worden berekend met gangbare vuistregels: snijverlies (instelbaar), lijm per tegelformaat, voegmiddel volgens de fabrikantformule, primer, waterdichting, egaliseermiddel, kit en profielen. Controleer bij twijfel altijd de technische fiche van het product.',
+      'Oppervlakken en materialen worden berekend met gangbare vuistregels: snijverlies (instelbaar), lijm per tegelformaat, voegmiddel volgens de fabrikantformule, primer, waterdichting, egaliseermiddel, kit en profielen, en voor vloeren laminaat/PVC per pak, ondervloer en plinten. Controleer bij twijfel altijd de technische fiche van het product.',
   },
   {
     icon: ShoppingCart,
@@ -47,7 +47,7 @@ export function About() {
       <PageTitle
         eyebrow="Over de app"
         title="Slimmer Wonen"
-        sub="Een rekenhulp voor aannemers en klussers bij het renoveren van badkamers: van opmeten tot een nette inkooplijst en offerte."
+        sub="Een rekenhulp voor aannemers en klussers bij het renoveren van badkamers, toiletten, keukens en vloeren: van opmeten tot een nette inkooplijst en offerte."
       />
       <div className="mt-8 grid gap-4">
         {BLOKKEN.map((b) => (

@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import type { Afmetingen, Scope, TileSpec } from '../lib/types'
+import type { Afmetingen, ProjectType, Scope, TileSpec } from '../lib/types'
 import { getal } from '../lib/format'
 
 /** Schematische plattegrond die meeschaalt met de ingevoerde maten. */
@@ -7,12 +7,14 @@ export function Plattegrond({
   afmetingen,
   scope,
   vloertegel,
+  type = 'badkamer',
   className = '',
   bg = '#FFFDF9',
 }: {
   afmetingen: Afmetingen
-  scope: Pick<Scope, 'inloopdouche' | 'toilet' | 'wastafelmeubel'>
+  scope: Partial<Pick<Scope, 'inloopdouche' | 'toilet' | 'wastafelmeubel' | 'fontein' | 'spatwand' | 'legvloer'>>
   vloertegel?: TileSpec
+  type?: ProjectType
   className?: string
   bg?: string
 }) {
@@ -43,8 +45,26 @@ export function Plattegrond({
   const tx = vloertegel ? (vloertegel.lengte / 100) * s : 0.6 * s
   const ty = vloertegel ? (vloertegel.breedte / 100) * s : 0.6 * s
   const lijnen: string[] = []
-  if (tx > 6) for (let x = x0 + tx; x < x0 + W - 1; x += tx) lijnen.push(`M${x} ${y0}V${y0 + H}`)
-  if (ty > 6) for (let y = y0 + ty; y < y0 + H - 1; y += ty) lijnen.push(`M${x0} ${y}H${x0 + W}`)
+  const planken = type === 'vloer' && scope.legvloer
+  if (planken) {
+    // klikvloer: planken van ca. 1,2 × 0,2 m in halfsteens verband
+    const pb = 0.2 * s
+    const pl = 1.2 * s
+    let rij = 0
+    for (let y = y0 + pb; y < y0 + H - 1; y += pb) lijnen.push(`M${x0} ${y}H${x0 + W}`)
+    for (let y = y0; y < y0 + H - 1; y += pb, rij++) {
+      const yb = Math.min(y + pb, y0 + H)
+      for (let x = x0 + (rij % 2 ? pl / 2 : pl * 0.85); x < x0 + W - 2; x += pl) lijnen.push(`M${x} ${y}V${yb}`)
+    }
+  } else {
+    if (tx > 6) for (let x = x0 + tx; x < x0 + W - 1; x += tx) lijnen.push(`M${x} ${y0}V${y0 + H}`)
+    if (ty > 6) for (let y = y0 + ty; y < y0 + H - 1; y += ty) lijnen.push(`M${x0} ${y}H${x0 + W}`)
+  }
+  // keuken: aanrecht langs de bovenwand (en zo nodig de rechterwand), 60 cm diep
+  const aanrechtL = Math.max(0, afmetingen.spatwand?.lengte ?? 0) * s
+  const diep = 0.6 * s
+  const aanrechtBoven = Math.min(aanrechtL, W)
+  const aanrechtRechts = Math.min(Math.max(0, aanrechtL - W + diep), H - diep)
 
   return (
     <svg viewBox={`0 0 ${vbW} ${vbH}`} className={className} role="img" aria-label={`Plattegrond ${getal(L)} bij ${getal(B)} meter`}>
@@ -54,8 +74,36 @@ export function Plattegrond({
         </pattern>
       </defs>
       <rect x={x0} y={y0} width={W} height={H} fill="#FFFDF9" />
-      <path d={lijnen.join('')} stroke="#E2D5BF" strokeWidth="1" />
-      {scope.inloopdouche && (
+      <path d={lijnen.join('')} stroke={planken ? '#E6D9C2' : '#E2D5BF'} strokeWidth="1" />
+      {type === 'keuken' && aanrechtL > 0 && (
+        <g>
+          <path
+            d={`M${x0} ${y0}H${x0 + aanrechtBoven}V${y0 + diep}${aanrechtRechts > 0 ? `H${x0 + W - diep}V${y0 + diep + aanrechtRechts}H${x0 + W}V${y0}` : `H${x0}Z`}`}
+            fill="#EDE3D3"
+            stroke="#85796A"
+            strokeWidth="1.2"
+          />
+          {scope.spatwand && (
+            <path
+              d={`M${x0 + 1} ${y0 + 4}H${x0 + aanrechtBoven}${aanrechtRechts > 0 ? `M${x0 + W - 4} ${y0}V${y0 + diep + aanrechtRechts}` : ''}`}
+              stroke="#B8955A"
+              strokeWidth="4"
+              strokeLinecap="round"
+              fill="none"
+            />
+          )}
+          <rect x={x0 + Math.min(aanrechtBoven, W) * 0.3} y={y0 + 10} width={Math.min(0.5 * s, aanrechtBoven * 0.25)} height={diep - 20} rx="4" fill="#FFFDF9" stroke="#85796A" strokeWidth="1" />
+          <text x={x0 + Math.min(aanrechtBoven, W) * 0.65} y={y0 + diep / 2 + 4} textAnchor="middle" className="fill-gold-700" fontSize="10.5" fontWeight="600" letterSpacing="1.2">
+            AANRECHT
+          </text>
+        </g>
+      )}
+      {type === 'vloer' && (
+        <text x={x0 + W / 2} y={y0 + H / 2 + 4} textAnchor="middle" className="fill-gold-700" fontSize="11" fontWeight="600" letterSpacing="1.4" stroke="#FFFDF9" strokeWidth="6" paintOrder="stroke">
+          {planken ? 'KLIKVLOER' : 'VLOER'}
+        </text>
+      )}
+      {type === 'badkamer' && scope.inloopdouche && (
         <g>
           <rect x={x0 + W - dW} y={y0} width={dW} height={dD} fill="#F4EAD6" />
           <rect x={x0 + W - dW} y={y0} width={dW} height={dD} fill={`url(#${arc})`} />
@@ -66,13 +114,19 @@ export function Plattegrond({
           </text>
         </g>
       )}
-      {scope.toilet && (
+      {(type === 'badkamer' || type === 'toilet') && scope.toilet && (
         <g transform={`translate(${x0 + 8} ${y0 + H * 0.34})`}>
           <rect x="0" y="0" width="12" height="30" rx="3" fill="#EDE3D3" stroke="#85796A" strokeWidth="1.2" />
           <ellipse cx="27" cy="15" rx="15" ry="11" fill="#FFFDF9" stroke="#85796A" strokeWidth="1.2" />
         </g>
       )}
-      {scope.wastafelmeubel && (
+      {scope.fontein && (type === 'toilet' || type === 'badkamer') && (
+        <g transform={`translate(${x0 + W - 30} ${y0 + 8})`}>
+          <rect x="0" y="0" width="22" height="16" rx="3" fill="#EDE3D3" stroke="#85796A" strokeWidth="1.2" />
+          <ellipse cx="11" cy="8.5" rx="6.5" ry="4.5" fill="#FFFDF9" stroke="#85796A" strokeWidth="1" />
+        </g>
+      )}
+      {type === 'badkamer' && scope.wastafelmeubel && (
         <g transform={`translate(${x0 + W - Math.min(0.8 * s, W * 0.4) - 8} ${y0 + H - 34})`}>
           <rect x="0" y="0" width={Math.min(0.8 * s, W * 0.4)} height="26" rx="4" fill="#EDE3D3" stroke="#85796A" strokeWidth="1.2" />
           <ellipse cx={Math.min(0.8 * s, W * 0.4) / 2} cy="14" rx={Math.min(0.8 * s, W * 0.4) / 4} ry="7" fill="#FFFDF9" stroke="#85796A" strokeWidth="1" />

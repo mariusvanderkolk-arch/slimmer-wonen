@@ -12,10 +12,24 @@ export type ScopeKey =
   | 'wastafelmeubel'
   | 'kitwerk'
   | 'stucwerk'
+  | 'fontein'
+  | 'spatwand'
+  | 'legvloer'
+  | 'ondervloer'
+  | 'plinten'
 
 export type Scope = Record<ScopeKey, boolean>
 
-export type ProjectType = 'badkamer'
+export type ProjectType = 'badkamer' | 'toilet' | 'keuken' | 'vloer'
+
+/** Soort klikvloer (laminaat of PVC). Een tegelvloer loopt via de werkzaamheid 'vloertegels'. */
+export type VloerSoort = 'laminaat' | 'pvc'
+
+export interface LegvloerSpec {
+  soort: VloerSoort
+  /** m² per pak */
+  m2PerPak: number
+}
 
 export interface Opening {
   id: string
@@ -52,6 +66,8 @@ export interface Afmetingen {
   douche: { breedte: number; diepte: number }
   /** laagdikte egaliseren in mm */
   egaliseerDikte: number
+  /** tegelwand achter het aanrecht (keuken): lengte en hoogte in m */
+  spatwand: { lengte: number; hoogte: number }
 }
 
 export interface PhotoRef {
@@ -72,6 +88,8 @@ export interface Project {
   afmetingen: Afmetingen
   wandtegel: TileSpec
   vloertegel: TileSpec
+  /** laminaat/PVC (ruimte 'vloer') */
+  legvloer: LegvloerSpec
   /** snijverlies in procenten */
   snijverlies: number
   /** uurtarief in euro incl. btw, voor de indicatieve arbeidsraming */
@@ -81,4 +99,6 @@ export interface Project {
   afgevinkt: Record<string, boolean>
   notities: string
   voorbeeld?: boolean
+  /** vaste sleutel van een voorbeeldproject (om nieuwe voorbeelden één keer toe te voegen) */
+  voorbeeldId?: string
 }

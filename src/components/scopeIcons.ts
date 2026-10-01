@@ -1,4 +1,4 @@
-import { Bath, BrickWall, Droplets, Grid2x2, Hammer, Heater, LayoutGrid, PaintRoller, ShowerHead, Sparkles, Toilet, type LucideIcon } from 'lucide-react'
+import { Bath, CookingPot, Droplet, Layers, Ruler, SquareDashed, BrickWall, Droplets, Grid2x2, Hammer, Heater, LayoutGrid, PaintRoller, ShowerHead, Sparkles, Toilet, type LucideIcon } from 'lucide-react'
 import type { ScopeKey } from '../lib/types'
 
 export const SCOPE_ICONS: Record<ScopeKey, LucideIcon> = {
@@ -13,4 +13,9 @@ export const SCOPE_ICONS: Record<ScopeKey, LucideIcon> = {
   wastafelmeubel: Bath,
   kitwerk: Sparkles,
   stucwerk: PaintRoller,
+  fontein: Droplet,
+  spatwand: CookingPot,
+  legvloer: Layers,
+  ondervloer: SquareDashed,
+  plinten: Ruler,
 }

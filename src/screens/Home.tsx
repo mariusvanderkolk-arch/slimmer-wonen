@@ -6,6 +6,7 @@ import { ga } from '../lib/router'
 import { useProjecten } from '../lib/store'
 import { useBerekening } from '../lib/useCalc'
 import { standaardAfmetingen, standaardScope } from '../lib/defaults'
+import { actieveScope, ruimteLabel } from '../lib/ruimtes'
 import type { Project } from '../lib/types'
 
 const STAPPEN = [
@@ -30,7 +31,7 @@ export function Home() {
         <section className="card relative overflow-hidden">
           <div className="grid lg:grid-cols-[1.15fr_1fr]">
             <div className="relative z-10 self-center px-6 pt-8 pb-8 sm:px-10 sm:pt-12 lg:pb-12">
-              <Eyebrow>Badkamerrenovatie</Eyebrow>
+              <Eyebrow>Badkamer · toilet · keuken · vloer</Eyebrow>
               <h1 className="mt-3 text-[2.5rem] leading-[1.02] font-semibold text-ink sm:text-[3.4rem]">
                 Van opmeten tot inkooplijst, <span className="text-gold-600 italic">helder</span> in één overzicht.
               </h1>
@@ -111,17 +112,17 @@ export function Home() {
 
 function ProjectKaart({ p }: { p: Project }) {
   const { oppervlakken: o, inkoop } = useBerekening(p)
-  const aantal = Object.values(p.scope).filter(Boolean).length
+  const aantal = actieveScope(p.type, p.scope).length
   return (
     <button
       type="button"
       onClick={() => ga(`/project/${p.id}/opmeten`)}
-      className="card group flex flex-col p-5 text-left transition hover:-translate-y-0.5 hover:border-gold-300 hover:shadow-lift sm:p-6"
+      className="card group flex min-w-0 flex-col p-5 text-left transition hover:-translate-y-0.5 hover:border-gold-300 hover:shadow-lift sm:p-6"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <Badge tone="gold">Badkamer</Badge>
+            <Badge tone="gold">{ruimteLabel(p.type)}</Badge>
             {p.voorbeeld && <Badge>Voorbeeld</Badge>}
           </div>
           <h3 className="truncate text-[1.6rem] leading-tight font-semibold text-ink">{p.naam || 'Naamloos project'}</h3>
@@ -146,8 +147,8 @@ function ProjectKaart({ p }: { p: Project }) {
           <dd className="tabnum mt-0.5 text-[0.95rem] font-semibold">{getal(o.vloer, 1)} m²</dd>
         </div>
         <div>
-          <dt className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">Wand</dt>
-          <dd className="tabnum mt-0.5 text-[0.95rem] font-semibold">{getal(o.wandNetto, 1)} m²</dd>
+          <dt className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">{p.type === 'vloer' ? 'Plinten' : p.type === 'keuken' ? 'Spatwand' : 'Wand'}</dt>
+          <dd className="tabnum mt-0.5 text-[0.95rem] font-semibold">{p.type === 'vloer' ? `${getal(o.plintLengte, 1)} m` : `${getal(o.wandNetto, 1)} m²`}</dd>
         </div>
         <div>
           <dt className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">Richtprijs</dt>
@@ -172,7 +173,7 @@ function LeegOverzicht() {
       </span>
       <h3 className="mt-5 text-[1.7rem] font-semibold">Nog geen projecten</h3>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-muted">
-        Start je eerste badkamerproject. Binnen een paar minuten heb je oppervlakken, materialen en een inkooplijst.
+        Start je eerste project: badkamer, toilet, keuken of vloer. Binnen een paar minuten heb je oppervlakken, materialen en een inkooplijst.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2.5">
         <Button icon={<Plus className="h-4 w-4" />} onClick={() => ga('/nieuw')}>

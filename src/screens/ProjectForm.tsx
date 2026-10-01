@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Bath, Check, CookingPot, Toilet, Trash2 } from 'lucide-react'
-import { Badge, Button, Card, CardHeader, PageTitle, TextField } from '../components/ui'
+import { ArrowLeft, ArrowRight, Check, Trash2 } from 'lucide-react'
+import { Button, Card, CardHeader, PageTitle, TextField } from '../components/ui'
 import { SCOPE_ICONS } from '../components/scopeIcons'
-import { SCOPE_ITEMS, nieuwProject } from '../lib/defaults'
+import { RUIMTE_ICONS } from '../components/ruimteIcons'
+import { nieuwProject, standaardAfmetingen } from '../lib/defaults'
+import { RUIMTES, ruimte, scopeItems, scopeVoor } from '../lib/ruimtes'
 import { ga } from '../lib/router'
 import { projectStore, useProject } from '../lib/store'
-import type { Scope, ScopeKey } from '../lib/types'
+import type { ProjectType, Scope, ScopeKey } from '../lib/types'
 
 export function ProjectForm({ id }: { id?: string }) {
   const bestaand = useProject(id)
@@ -14,20 +16,35 @@ export function ProjectForm({ id }: { id?: string }) {
   const [klant, setKlant] = useState(concept.klant)
   const [adres, setAdres] = useState(concept.adres)
   const [scope, setScope] = useState<Scope>(concept.scope)
+  const [type, setType] = useState<ProjectType>(concept.type)
 
   if (id && !bestaand) return <NietGevonden />
 
+  const items = scopeItems(type)
   const wissel = (k: ScopeKey) => setScope((s) => ({ ...s, [k]: !s[k] }))
-  const aantal = Object.values(scope).filter(Boolean).length
-  const alles = aantal === SCOPE_ITEMS.length
+  const aantal = items.filter((i) => scope[i.key]).length
+  const alles = aantal === items.length
+  const kiesType = (t: ProjectType) => {
+    if (t === type) return
+    setType(t)
+    setScope(scopeVoor(t))
+  }
 
   const opslaan = () => {
-    const velden = { naam: naam.trim() || 'Nieuwe badkamer', klant: klant.trim(), adres: adres.trim(), scope }
+    const velden = { naam: naam.trim() || `Nieuwe ${ruimte(type).label.toLowerCase()}`, klant: klant.trim(), adres: adres.trim(), scope, type }
     if (bestaand) {
-      projectStore.werkBij(bestaand.id, (p) => ({ ...p, ...velden }))
+      const anderType = bestaand.type !== type
+      projectStore.werkBij(bestaand.id, (p) => ({
+        ...p,
+        ...velden,
+        // bij een ander ruimtetype: typische maten (spatwand, tegelhoogte) van het nieuwe type, lengte/breedte blijven
+        afmetingen: anderType ? { ...standaardAfmetingen(type), lengte: p.afmetingen.lengte, breedte: p.afmetingen.breedte, openingen: p.afmetingen.openingen } : p.afmetingen,
+        snijverlies: anderType ? ruimte(type).snijverlies : p.snijverlies,
+      }))
       ga(`/project/${bestaand.id}/opmeten`)
     } else {
-      const p = { ...concept, ...velden, createdAt: Date.now(), updatedAt: Date.now() }
+      const basis = nieuwProject({ type })
+      const p = { ...concept, ...velden, afmetingen: basis.afmetingen, snijverlies: basis.snijverlies, createdAt: Date.now(), updatedAt: Date.now() }
       projectStore.voegToe(p)
       ga(`/project/${p.id}/opmeten`)
     }
@@ -68,50 +85,59 @@ export function ProjectForm({ id }: { id?: string }) {
         </Card>
 
         <Card>
-          <CardHeader title="Type ruimte" sub="We beginnen met badkamers. Andere ruimtes volgen." />
-          <div className="grid grid-cols-3 gap-2.5 p-5 sm:gap-3 sm:p-6">
-            {[
-              { l: 'Badkamer', i: Bath, actief: true },
-              { l: 'Toilet', i: Toilet, actief: false },
-              { l: 'Keuken', i: CookingPot, actief: false },
-            ].map((t) => (
-              <div
-                key={t.l}
-                aria-disabled={!t.actief}
-                className={`relative flex flex-col items-center gap-2 rounded-xl px-2 py-4 text-center ring-1 ring-inset ${
-                  t.actief ? 'bg-gold-100/70 ring-2 ring-gold-400' : 'bg-sand-50 text-ink-muted ring-sand-300'
-                }`}
-              >
-                <t.i className={`h-6 w-6 ${t.actief ? 'text-gold-700' : 'text-ink-muted/70'}`} />
-                <span className={`text-sm font-semibold ${t.actief ? 'text-ink' : ''}`}>{t.l}</span>
-                {t.actief ? (
-                  <span className="absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full bg-gold-500 text-white">
-                    <Check className="h-3 w-3" strokeWidth={3} />
+          <CardHeader title="Type ruimte" sub="Bepaalt de checklist, de rekenregels en de standaardmaten." />
+          <div role="radiogroup" aria-label="Type ruimte" className="grid grid-cols-2 gap-2.5 p-4 sm:grid-cols-4 sm:gap-3 sm:p-6">
+            {RUIMTES.map((r) => {
+              const actief = r.id === type
+              const Icon = RUIMTE_ICONS[r.id]
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={actief}
+                  onClick={() => kiesType(r.id)}
+                  className={`relative flex flex-col items-center gap-1.5 rounded-xl px-2.5 pt-4 pb-3.5 text-center ring-inset transition ${
+                    actief ? 'bg-gold-100/70 ring-2 ring-gold-400' : 'bg-white/60 ring-1 ring-sand-300 hover:ring-gold-300'
+                  }`}
+                >
+                  <span className={`grid h-11 w-11 place-items-center rounded-full ${actief ? 'bg-paper text-gold-700 ring-1 ring-gold-200' : 'bg-sand-100 text-ink-muted'}`}>
+                    <Icon className="h-5.5 w-5.5" />
                   </span>
-                ) : (
-                  <Badge className="!px-2 !text-[0.62rem]">Binnenkort</Badge>
-                )}
-              </div>
-            ))}
+                  <span className="text-sm font-semibold text-ink">{r.label}</span>
+                  <span className="text-[0.72rem] leading-snug text-ink-muted">{r.omschrijving}</span>
+                  {actief && (
+                    <span className="absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full bg-gold-500 text-white">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
+          {bestaand && bestaand.type !== type && (
+            <p className="-mt-1 px-5 pb-5 text-[0.8rem] text-ink-muted sm:px-6">
+              Bij opslaan krijgt het project de checklist en standaardmaten van een {ruimte(type).label.toLowerCase()}. Lengte, breedte en openingen blijven staan.
+            </p>
+          )}
         </Card>
 
         <Card>
           <CardHeader
             title="Werkzaamheden"
-            sub={`${aantal} van ${SCOPE_ITEMS.length} geselecteerd`}
+            sub={`${aantal} van ${items.length} geselecteerd`}
             action={
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setScope(Object.fromEntries(SCOPE_ITEMS.map((i) => [i.key, !alles])) as Scope)}
+                onClick={() => setScope((s) => ({ ...s, ...Object.fromEntries(items.map((i) => [i.key, !alles])) }))}
               >
                 {alles ? 'Niets' : 'Alles'}
               </Button>
             }
           />
           <div className="grid gap-2.5 p-4 sm:grid-cols-2 sm:p-6">
-            {SCOPE_ITEMS.map((item) => {
+            {items.map((item) => {
               const aan = scope[item.key]
               const Icon = SCOPE_ICONS[item.key]
               return (
@@ -121,7 +147,7 @@ export function ProjectForm({ id }: { id?: string }) {
                   role="checkbox"
                   aria-checked={aan}
                   onClick={() => wissel(item.key)}
-                  className={`flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-left ring-1 ring-inset transition ${
+                  className={`flex w-full min-w-0 items-center gap-3.5 rounded-xl px-3.5 py-3 text-left ring-1 ring-inset transition ${
                     aan ? 'bg-gold-100/60 ring-gold-300' : 'bg-white/60 ring-sand-300 hover:ring-sand-400'
                   }`}
                 >

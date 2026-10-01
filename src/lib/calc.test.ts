@@ -11,7 +11,8 @@ import {
   tegelBehoefte,
   voegKgPerM2,
 } from './calc'
-import { nieuwProject, voorbeeldProjecten } from './defaults'
+import { nieuwProject, normaliseerProject, voorbeeldProjecten } from './defaults'
+import { scopeItems, scopeVoor } from './ruimtes'
 import type { Project } from './types'
 
 const basis = (): Project =>
@@ -27,6 +28,7 @@ const basis = (): Project =>
       ],
       douche: { breedte: 0.9, diepte: 1.2 },
       egaliseerDikte: 3,
+      spatwand: { lengte: 3, hoogte: 0.6 },
     },
     wandtegel: { lengte: 60, breedte: 30, m2PerDoos: 1.44, dikte: 9, voeg: 3 },
     vloertegel: { lengte: 60, breedte: 60, m2PerDoos: 1.44, dikte: 10, voeg: 3 },
@@ -205,5 +207,197 @@ describe('arbeid', () => {
     expect(a.find((r) => r.scope === 'wandtegels')!.uren).toBeCloseTo(23.5, 1)
     expect(a.find((r) => r.scope === 'toilet')!.uren).toBe(5)
     expect(a.find((r) => r.scope === 'stucwerk')).toBeUndefined()
+  })
+})
+
+describe('toilet', () => {
+  const toilet = (): Project =>
+    nieuwProject({
+      type: 'toilet',
+      afmetingen: {
+        ...nieuwProject({ type: 'toilet' }).afmetingen,
+        lengte: 1.2,
+        breedte: 0.9,
+        hoogte: 2.5,
+        tegelhoogte: 1.2,
+        openingen: [{ id: 'd', type: 'deur', breedte: 0.7, hoogte: 2.0, vanafVloer: 0 }],
+      },
+    })
+
+  it('heeft een eigen checklist met fonteintje en zonder douche', () => {
+    const keys = scopeItems('toilet').map((i) => i.key)
+    expect(keys).toContain('fontein')
+    expect(keys).not.toContain('inloopdouche')
+    expect(keys).not.toContain('waterdicht')
+  })
+
+  it('wand halfhoog: omtrek × 1,2 m − deur in tegelzone', () => {
+    const p = toilet()
+    const r = regel(p, 'wandtegel')!
+    const wand = 4.2 * 1.2 - 0.7 * 1.2
+    expect(r.nodig).toBeCloseTo(wand * 1.12) // 12% snijverlies standaard bij toilet
+    expect(regel(p, 'vloertegel')!.nodig).toBeCloseTo(1.08 * 1.12)
+  })
+
+  it('fonteintje: set + 1 m extra kit + 3 uur arbeid', () => {
+    const p = toilet()
+    expect(regel(p, 'fontein')!.aantal).toBe(1)
+    const o = berekenOppervlakken(p.afmetingen, p.scope, 'toilet')
+    // naad vloer-wand (4,2 − 0,7) + 4 hoeken × 1,2 + toilet 1,2 + fontein 1,0
+    expect(kitLengte(p, o)).toBeCloseTo(3.5 + 4.8 + 1.2 + 1.0)
+    expect(berekenArbeid(p).find((a) => a.scope === 'fontein')!.uren).toBe(3)
+  })
+
+  it('negeert werkzaamheden die niet bij het type horen (geen douche in toilet)', () => {
+    const p = toilet()
+    p.scope.inloopdouche = true
+    p.scope.waterdicht = true
+    const ids = berekenMaterialen(p).map((r) => r.id)
+    expect(ids).not.toContain('glaswand')
+    expect(ids).not.toContain('waterdicht')
+  })
+})
+
+describe('keuken', () => {
+  const keuken = (): Project =>
+    nieuwProject({
+      type: 'keuken',
+      afmetingen: { ...nieuwProject({ type: 'keuken' }).afmetingen, lengte: 4, breedte: 3, spatwand: { lengte: 3, hoogte: 0.6 } },
+      wandtegel: { lengte: 30, breedte: 7.5, m2PerDoos: 0.5, dikte: 8, voeg: 2 },
+      snijverlies: 10,
+    })
+
+  it('wandtegels = spatwand achter het aanrecht (lengte × hoogte)', () => {
+    const p = keuken()
+    const o = berekenOppervlakken(p.afmetingen, p.scope, 'keuken')
+    expect(o.spatwand).toBeCloseTo(1.8)
+    expect(o.wandNetto).toBeCloseTo(1.8)
+    const r = regel(p, 'wandtegel')!
+    expect(r.naam).toBe('Wandtegels spatwand')
+    expect(r.nodig).toBeCloseTo(1.98)
+    expect(r.aantal).toBe(4) // 1,98 / 0,5
+  })
+
+  it('kit langs werkblad + 2 zijkanten, profiel op bovenrand + zijkanten', () => {
+    const p = keuken()
+    const o = berekenOppervlakken(p.afmetingen, p.scope, 'keuken')
+    expect(kitLengte(p, o)).toBeCloseTo(3 + 1.2)
+    expect(profielLengte(p, o)).toBeCloseTo(4.2)
+    expect(regel(p, 'kit')!.aantal).toBe(1)
+    expect(regel(p, 'profiel')!.aantal).toBe(2) // 4,2 / 2,5
+  })
+
+  it('vloer, lijm voor spatwand + vloer en geen sanitair', () => {
+    const p = keuken()
+    expect(regel(p, 'vloertegel')!.nodig).toBeCloseTo(12 * 1.1)
+    expect(regel(p, 'tegellijm')!.nodig).toBeCloseTo(1.8 * 3.5 + 12 * 4.5)
+    expect(regel(p, 'hangtoilet')).toBeUndefined()
+  })
+
+  it('sloop: spatwand × 2,5 cm + vloer × 3 cm, × 1,5', () => {
+    const r = regel(keuken(), 'bigbag')!
+    expect(r.nodig).toBeCloseTo((1.8 * 0.025 + 12 * 0.03) * 1.5)
+  })
+
+  it('zonder spatwand geen wandtegels of profiel', () => {
+    const p = keuken()
+    p.scope.spatwand = false
+    const ids = berekenMaterialen(p).map((r) => r.id)
+    expect(ids).not.toContain('wandtegel')
+    expect(ids).not.toContain('profiel')
+  })
+})
+
+describe('vloer & woonkamer', () => {
+  const kamer = (): Project =>
+    nieuwProject({
+      type: 'vloer',
+      afmetingen: {
+        ...nieuwProject({ type: 'vloer' }).afmetingen,
+        lengte: 6,
+        breedte: 4,
+        openingen: [{ id: 'd', type: 'deur', breedte: 0.8, hoogte: 2.1, vanafVloer: 0 }],
+      },
+      legvloer: { soort: 'laminaat', m2PerPak: 2.22 },
+      snijverlies: 7,
+    })
+
+  it('laminaat: vloer + snijverlies, afgerond op hele pakken, prijs per m²', () => {
+    const r = regel(kamer(), 'laminaat')!
+    expect(r.nodig).toBeCloseTo(24 * 1.07)
+    expect(r.aantal).toBe(12) // 25,68 / 2,22 = 11,6
+    expect(r.prijsAantal).toBeCloseTo(12 * 2.22)
+  })
+
+  it('PVC in plaats van laminaat', () => {
+    const p = kamer()
+    p.legvloer = { soort: 'pvc', m2PerPak: 2.16 }
+    const ids = berekenMaterialen(p).map((r) => r.id)
+    expect(ids).toContain('pvc')
+    expect(ids).not.toContain('laminaat')
+  })
+
+  it('ondervloer met 5% overlap in rollen van 10 m²', () => {
+    const r = regel(kamer(), 'ondervloer')!
+    expect(r.nodig).toBeCloseTo(25.2)
+    expect(r.aantal).toBe(3)
+  })
+
+  it('plinten: omtrek − deuren + 10%, lengtes van 2,4 m, plus montagekit', () => {
+    const p = kamer()
+    const r = regel(p, 'plint')!
+    expect(r.nodig).toBeCloseTo((20 - 0.8) * 1.1)
+    expect(r.aantal).toBe(9) // 21,12 / 2,4 = 8,8
+    expect(regel(p, 'montagekit')!.aantal).toBe(2) // 19,2 / 12
+  })
+
+  it('geen wandtegels; tegelvloer kan wel, met lijm en voeg', () => {
+    const p = kamer()
+    expect(regel(p, 'wandtegel')).toBeUndefined()
+    p.scope.vloertegels = true
+    p.scope.legvloer = false
+    expect(regel(p, 'vloertegel')!.nodig).toBeCloseTo(24 * 1.07)
+    expect(regel(p, 'tegellijm')).toBeDefined()
+  })
+
+  it('egaliseren en sloop van de oude vloer (1,5 cm)', () => {
+    const p = kamer()
+    p.scope.egaliseren = true
+    expect(regel(p, 'egaliseer')!.nodig).toBeCloseTo(24 * 3 * 1.6)
+    expect(regel(p, 'bigbag')!.nodig).toBeCloseTo(24 * 0.015 * 1.5)
+  })
+
+  it('arbeid: leggen, ondervloer en plinten', () => {
+    const a = berekenArbeid(kamer())
+    expect(a.find((r) => r.scope === 'legvloer')!.uren).toBeCloseTo(7.2)
+    expect(a.find((r) => r.scope === 'plinten')!.uren).toBeCloseTo(3.8, 1)
+    expect(a.find((r) => r.scope === 'sloopwerk')!.uren).toBeCloseTo(3.6)
+  })
+})
+
+describe('ruimtes en voorbeelden', () => {
+  it('standaardscope per type staat in de checklist van dat type', () => {
+    for (const type of ['badkamer', 'toilet', 'keuken', 'vloer'] as const) {
+      const keys = scopeItems(type).map((i) => i.key)
+      const aan = Object.entries(scopeVoor(type)).filter(([, v]) => v).map(([k]) => k)
+      for (const k of aan) expect(keys).toContain(k)
+    }
+  })
+
+  it('er is een keuken- en een vloervoorbeeld', () => {
+    const types = voorbeeldProjecten().map((p) => p.type)
+    expect(types).toContain('keuken')
+    expect(types).toContain('vloer')
+  })
+
+  it('oude projecten (zonder type/spatwand/legvloer) worden aangevuld als badkamer', () => {
+    const oud = { ...basis() } as Partial<Project> & { id: string }
+    delete oud.type
+    delete oud.legvloer
+    const p = normaliseerProject(oud)
+    expect(p.type).toBe('badkamer')
+    expect(p.legvloer.soort).toBe('laminaat')
+    expect(p.afmetingen.spatwand.hoogte).toBeGreaterThan(0)
+    expect(berekenMaterialen(p).length).toBe(berekenMaterialen(basis()).length)
   })
 })

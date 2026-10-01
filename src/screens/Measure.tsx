@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
-import { AppWindow, DoorOpen, LayoutGrid, Plus, Ruler, Settings2, ShowerHead, Trash2 } from 'lucide-react'
+import { AppWindow, CookingPot, DoorOpen, Layers, LayoutGrid, Plus, Ruler, Settings2, ShowerHead, Trash2 } from 'lucide-react'
 import { Fotos } from '../components/Fotos'
 import { Plattegrond } from '../components/Plattegrond'
 import { Button, Card, CardHeader, NumberField } from '../components/ui'
-import { uid } from '../lib/defaults'
+import { LEGVLOER_PAK, uid } from '../lib/defaults'
+import { effectieveScope } from '../lib/calc'
 import { getal } from '../lib/format'
 import { projectStore } from '../lib/store'
 import { useBerekening } from '../lib/useCalc'
-import type { Afmetingen, Opening, Project, TileSpec } from '../lib/types'
+import type { Afmetingen, LegvloerSpec, Opening, Project, TileSpec } from '../lib/types'
 
 const WAND_PRESETS: (TileSpec & { label: string })[] = [
   { label: '20 × 20', lengte: 20, breedte: 20, m2PerDoos: 1.0, dikte: 8, voeg: 2 },
@@ -54,6 +55,18 @@ export function Measure({ p }: { p: Project }) {
     })
   const setTegel = (k: 'wandtegel' | 'vloertegel', patch: Partial<TileSpec>) => upd((x) => ({ ...x, [k]: { ...x[k], ...patch } }))
   const tegelhoogteVol = Math.abs(a.tegelhoogte - a.hoogte) < 0.005
+  const type = p.type
+  const s = effectieveScope(p)
+  const setLegvloer = (patch: Partial<LegvloerSpec>) => upd((x) => ({ ...x, legvloer: { ...x.legvloer, ...patch } }))
+  /** Vloertype voor vloer/woonkamer: laminaat, PVC of tegelvloer */
+  const vloerKeuze = s.vloertegels && !s.legvloer ? 'tegel' : p.legvloer.soort
+  const kiesVloer = (k: 'laminaat' | 'pvc' | 'tegel') =>
+    upd((x) => ({
+      ...x,
+      scope: { ...x.scope, legvloer: k !== 'tegel', vloertegels: k === 'tegel', ondervloer: k === 'tegel' ? false : x.scope.ondervloer || !x.scope.legvloer },
+      legvloer: k === 'tegel' ? x.legvloer : { soort: k, m2PerPak: x.legvloer.soort === k ? x.legvloer.m2PerPak : LEGVLOER_PAK[k] },
+    }))
+  const toonTegelhoogte = s.wandtegels && (type === 'badkamer' || type === 'toilet')
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -61,12 +74,16 @@ export function Measure({ p }: { p: Project }) {
         <Fotos p={p} />
 
         <Card>
-          <CardHeader icon={<Ruler className="h-5 w-5" />} title="Afmetingen ruimte" sub="Binnenmaten in meters, gemeten van wand tot wand." />
+          <CardHeader
+            icon={<Ruler className="h-5 w-5" />}
+            title="Afmetingen ruimte"
+            sub={type === 'vloer' ? 'Binnenmaten van de vloer in meters, van wand tot wand.' : 'Binnenmaten in meters, gemeten van wand tot wand.'}
+          />
           <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 sm:p-6">
             <NumberField label="Lengte" unit="m" value={a.lengte} onChange={(v) => setA({ lengte: v })} />
             <NumberField label="Breedte" unit="m" value={a.breedte} onChange={(v) => setA({ breedte: v })} />
             <NumberField label="Hoogte" unit="m" value={a.hoogte} onChange={(v) => setA({ hoogte: v, tegelhoogte: tegelhoogteVol ? v : Math.min(a.tegelhoogte, v) })} />
-            <div className="col-span-2 sm:col-span-3">
+            {toonTegelhoogte && <div className="col-span-2 sm:col-span-3">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <NumberField label="Tegelhoogte wand" unit="m" value={a.tegelhoogte} onChange={(v) => setA({ tegelhoogte: v })} />
                 <div className="col-span-1 flex flex-wrap items-end gap-2 pb-2 sm:col-span-2">
@@ -81,15 +98,76 @@ export function Measure({ p }: { p: Project }) {
                   </Chip>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         </Card>
+
+        {type === 'keuken' && s.spatwand && (
+          <Card>
+            <CardHeader icon={<CookingPot className="h-5 w-5" />} title="Spatwand achter het aanrecht" sub="Het te betegelen stuk wand tussen werkblad en bovenkastjes of afzuigkap." />
+            <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 sm:p-6">
+              <NumberField label="Lengte werkblad" unit="m" value={a.spatwand.lengte} onChange={(v) => setA({ spatwand: { ...a.spatwand, lengte: v } })} hint="Inclusief een eventuele hoek." />
+              <NumberField label="Hoogte spatwand" unit="m" value={a.spatwand.hoogte} onChange={(v) => setA({ spatwand: { ...a.spatwand, hoogte: v } })} />
+              <div className="col-span-2 flex flex-wrap items-end gap-2 pb-2 sm:col-span-1">
+                {[0.6, 0.65, 0.7].map((h) => (
+                  <Chip key={h} actief={Math.abs(a.spatwand.hoogte - h) < 0.005} onClick={() => setA({ spatwand: { ...a.spatwand, hoogte: h } })}>
+                    {getal(h * 100, 0)} cm
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {type === 'vloer' && (
+          <Card>
+            <CardHeader icon={<Layers className="h-5 w-5" />} title="Nieuwe vloer" sub="Kies het type vloer. Laminaat en PVC worden per pak gerekend, tegels per doos." />
+            <div className="p-5 sm:p-6">
+              <div role="radiogroup" aria-label="Type vloer" className="grid grid-cols-3 gap-1 rounded-xl bg-sand-100 p-1 ring-1 ring-sand-200">
+                {(
+                  [
+                    ['laminaat', 'Laminaat'],
+                    ['pvc', 'PVC'],
+                    ['tegel', 'Tegelvloer'],
+                  ] as const
+                ).map(([k, l]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={vloerKeuze === k && (s.legvloer || s.vloertegels)}
+                    onClick={() => kiesVloer(k)}
+                    className={`h-10 rounded-lg text-sm font-medium transition ${
+                      vloerKeuze === k && (s.legvloer || s.vloertegels) ? 'bg-paper text-ink shadow-sm ring-1 ring-sand-300' : 'text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {s.legvloer && (
+                <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <NumberField label="m² per pak" unit="m²" value={p.legvloer.m2PerPak} onChange={(v) => setLegvloer({ m2PerPak: v })} hint="Staat op de verpakking." />
+                </div>
+              )}
+              {s.legvloer && s.vloertegels && (
+                <p className="mt-3 text-[0.8rem] text-rust">Je hebt zowel een klikvloer als een tegelvloer gekozen; beide worden gerekend.</p>
+              )}
+            </div>
+          </Card>
+        )}
 
         <Card>
           <CardHeader
             icon={<DoorOpen className="h-5 w-5" />}
-            title="Deuren & ramen"
-            sub="Openingen worden van het wandoppervlak afgetrokken, voor zover ze in de tegelzone vallen."
+            title={type === 'vloer' || type === 'keuken' ? 'Deuren' : 'Deuren & ramen'}
+            sub={
+              type === 'vloer'
+                ? 'Deurbreedtes gaan af van de plinten.'
+                : type === 'keuken'
+                  ? 'Deurbreedtes gaan af van de omtrek (plinten/naden).'
+                  : 'Openingen worden van het wandoppervlak afgetrokken, voor zover ze in de tegelzone vallen.'
+            }
           />
           <div className="p-5 sm:p-6">
             {a.openingen.length === 0 && <p className="mb-4 text-sm text-ink-muted">Geen openingen. Voeg een deur of raam toe.</p>}
@@ -117,9 +195,9 @@ export function Measure({ p }: { p: Project }) {
                       <NumberField compact label="Vanaf vloer" unit="m" value={op.vanafVloer} onChange={(v) => setOpening(op.id, { vanafVloer: v })} />
                     ) : (
                       <div className="min-w-0">
-                        <p className="mb-1.5 truncate text-[0.8rem] font-medium text-ink-soft">Aftrek</p>
+                        <p className="mb-1.5 truncate text-[0.8rem] font-medium text-ink-soft">{type === 'vloer' || type === 'keuken' ? 'Omtrek' : 'Aftrek'}</p>
                         <p className="tabnum flex h-11 items-center text-sm text-ink-muted">
-                          {getal(op.breedte * Math.min(op.hoogte, o.tegelhoogte))} m²
+                          {type === 'vloer' || type === 'keuken' ? `− ${getal(op.breedte)} m` : `${getal(op.breedte * Math.min(op.hoogte, o.tegelhoogte))} m²`}
                         </p>
                       </div>
                     )}
@@ -131,14 +209,16 @@ export function Measure({ p }: { p: Project }) {
               <Button variant="secondary" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => nieuweOpening('deur')}>
                 Deur
               </Button>
-              <Button variant="secondary" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => nieuweOpening('raam')}>
-                Raam
-              </Button>
+              {(type === 'badkamer' || type === 'toilet') && (
+                <Button variant="secondary" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => nieuweOpening('raam')}>
+                  Raam
+                </Button>
+              )}
             </div>
           </div>
         </Card>
 
-        {p.scope.inloopdouche && (
+        {s.inloopdouche && (
           <Card>
             <CardHeader icon={<ShowerHead className="h-5 w-5" />} title="Douchezone" sub="Bepaalt de waterdichting op de wand, de kitvoegen en de lengte van de douchegoot." />
             <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 sm:p-6">
@@ -148,14 +228,14 @@ export function Measure({ p }: { p: Project }) {
           </Card>
         )}
 
-        {(p.scope.wandtegels || p.scope.vloertegels) && (
+        {(s.wandtegels || s.vloertegels || s.spatwand) && (
           <Card>
             <CardHeader icon={<LayoutGrid className="h-5 w-5" />} title="Tegels" sub="Formaat en verpakking bepalen het aantal dozen, de lijm en de voeg." />
             <div className="divide-y divide-sand-200">
-              {p.scope.wandtegels && (
-                <TegelVelden titel="Wandtegel" tegel={p.wandtegel} presets={WAND_PRESETS} onChange={(t) => setTegel('wandtegel', t)} />
+              {(s.wandtegels || s.spatwand) && (
+                <TegelVelden titel={type === 'keuken' ? 'Tegel spatwand' : 'Wandtegel'} tegel={p.wandtegel} presets={WAND_PRESETS} onChange={(t) => setTegel('wandtegel', t)} />
               )}
-              {p.scope.vloertegels && (
+              {s.vloertegels && (
                 <TegelVelden titel="Vloertegel" tegel={p.vloertegel} presets={VLOER_PRESETS} onChange={(t) => setTegel('vloertegel', t)} />
               )}
             </div>
@@ -166,17 +246,21 @@ export function Measure({ p }: { p: Project }) {
           <CardHeader icon={<Settings2 className="h-5 w-5" />} title="Uitgangspunten" sub="Pas aan op de klus en je eigen werkwijze." />
           <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <div>
-              <NumberField label="Snijverlies tegels" unit="%" decimals={1} value={p.snijverlies} onChange={(v) => upd((x) => ({ ...x, snijverlies: Math.min(v, 50) }))} />
+              <NumberField label={type === 'vloer' && s.legvloer ? 'Snijverlies vloer' : 'Snijverlies tegels'} unit="%" decimals={1} value={p.snijverlies} onChange={(v) => upd((x) => ({ ...x, snijverlies: Math.min(v, 50) }))} />
               <div className="mt-2.5 flex flex-wrap gap-2">
-                {[5, 10, 15].map((n) => (
+                {(type === 'vloer' && s.legvloer ? [5, 7, 10] : [5, 10, 15]).map((n) => (
                   <Chip key={n} actief={p.snijverlies === n} onClick={() => upd((x) => ({ ...x, snijverlies: n }))}>
                     {n}%
                   </Chip>
                 ))}
               </div>
-              <p className="mt-2 text-xs leading-snug text-ink-muted">10% is gangbaar; 15% bij diagonaal leggen of veel hoeken.</p>
+              <p className="mt-2 text-xs leading-snug text-ink-muted">
+                {type === 'vloer' && s.legvloer
+                  ? '5–7% bij recht leggen; 10% of meer bij visgraat of veel hoeken.'
+                  : '10% is gangbaar; 15% bij diagonaal leggen of veel hoeken.'}
+              </p>
             </div>
-            {p.scope.egaliseren && (
+            {s.egaliseren && (
               <NumberField
                 label="Laagdikte egaliseren"
                 unit="mm"
@@ -197,15 +281,30 @@ export function Measure({ p }: { p: Project }) {
             <p className="text-[0.82rem] text-ink-muted">Schematisch, schaalt mee met je maten</p>
           </div>
           <div className="bg-sand-50/70 px-4 py-4">
-            <Plattegrond afmetingen={a} scope={p.scope} vloertegel={p.scope.vloertegels ? p.vloertegel : undefined} bg="#FAF7F1" className="mx-auto w-full max-w-[320px]" />
+            <Plattegrond type={type} afmetingen={a} scope={s} vloertegel={s.vloertegels ? p.vloertegel : undefined} bg="#FAF7F1" className="mx-auto w-full max-w-[320px]" />
           </div>
           <dl className="grid grid-cols-2 gap-px border-t border-sand-200 bg-sand-200">
-            {[
-              ['Vloer', `${getal(o.vloer)} m²`],
-              ['Wand (netto)', `${getal(o.wandNetto)} m²`],
-              ['Omtrek', `${getal(o.omtrek)} m`],
-              ['Openingen', `− ${getal(o.openingenAftrek)} m²`],
-            ].map(([k, v]) => (
+            {(type === 'vloer'
+              ? [
+                  ['Vloer', `${getal(o.vloer)} m²`],
+                  ['Omtrek', `${getal(o.omtrek)} m`],
+                  ['Plinten', `${getal(o.plintLengte)} m`],
+                  ['Deuren', `− ${getal(o.deurBreedte)} m`],
+                ]
+              : type === 'keuken'
+                ? [
+                    ['Vloer', `${getal(o.vloer)} m²`],
+                    ['Spatwand', `${getal(o.spatwand)} m²`],
+                    ['Omtrek', `${getal(o.omtrek)} m`],
+                    ['Werkblad', `${getal(a.spatwand.lengte)} m`],
+                  ]
+                : [
+                    ['Vloer', `${getal(o.vloer)} m²`],
+                    ['Wand (netto)', `${getal(o.wandNetto)} m²`],
+                    ['Omtrek', `${getal(o.omtrek)} m`],
+                    ['Openingen', `− ${getal(o.openingenAftrek)} m²`],
+                  ]
+            ).map(([k, v]) => (
               <div key={k} className="bg-paper px-5 py-3.5">
                 <dt className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">{k}</dt>
                 <dd className="tabnum mt-0.5 text-[1.05rem] font-semibold text-ink">{v}</dd>

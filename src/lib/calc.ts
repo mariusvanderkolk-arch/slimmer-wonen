@@ -7,8 +7,16 @@
  * als vervanging van de technische fiche van het gekozen product.
  *
  * Alle functies zijn puur (geen side effects) zodat ze eenvoudig te testen zijn.
+ *
+ * Ruimtetypes:
+ * - badkamer / toilet: wand = omtrek × tegelhoogte − openingen; vloer = L × B.
+ * - keuken: de te betegelen wand is de spatwand achter het aanrecht (lengte × hoogte);
+ *   kit langs het werkblad en de zijkanten, profiel op bovenrand en zijkanten.
+ * - vloer/woonkamer: geen wandtegels; laminaat/PVC per pak incl. snijverlies, ondervloer
+ *   met 5% overlap, plinten langs de omtrek minus deuren (+10% zaagverlies).
  */
-import type { Afmetingen, Opening, Project, Scope, TileSpec } from './types'
+import { ruimte } from './ruimtes'
+import type { Afmetingen, Opening, Project, ProjectType, Scope, TileSpec } from './types'
 
 /** Vuistregels en verpakkingsgroottes. Eén plek, zodat ze makkelijk bij te stellen zijn. */
 export const REGELS = {
@@ -72,6 +80,22 @@ export const REGELS = {
   sloopVloerM: 0.08,
   sloopOpbulk: 1.5,
   bigBagM3: 1,
+  /** Keuken: oude tegels + lijm zonder dekvloer (m). */
+  sloopVloerDunM: 0.03,
+  /** Woonkamer: oude laminaat/vloerbedekking incl. ondervloer (m). */
+  sloopLegvloerM: 0.015,
+
+  /** Fonteintje: kitvoeg rond fontein (m). */
+  kitFonteinM: 1.0,
+
+  /** Ondervloer: m² vloer + 5% overlap, rol à 10 m². */
+  ondervloerOverlap: 0.05,
+  ondervloerRolM2: 10,
+  /** Plinten: omtrek − deuren + 10% zaag-/verstekverlies, lengtes van 2,4 m. */
+  plintVerlies: 0.1,
+  plintLengteM: 2.4,
+  /** Montagekit voor plinten: ca. 12 m plint per koker van 310 ml. */
+  montagekitMPerKoker: 12,
 } as const
 
 /** Indicatieve arbeidsnormen (uren) voor de offerte-raming. */
@@ -89,7 +113,23 @@ export const ARBEID = {
   wastafelmeubel: 3,
   kitwerkPerM: 0.15,
   stucwerkPerM2: 0.6,
+  /** keuken: spatwand (veel snijwerk rond stopcontacten) */
+  spatwandPerM2: 1.4,
+  spatwandVast: 1,
+  fontein: 3,
+  /** woonkamer: oude vloer verwijderen */
+  sloopLegvloerPerM2: 0.15,
+  laminaatPerM2: 0.3,
+  pvcPerM2: 0.35,
+  ondervloerPerM2: 0.05,
+  plintenPerM: 0.2,
 } as const
+
+/** Scope zonder werkzaamheden die niet bij het ruimtetype horen (bijv. na wisselen van type). */
+export function effectieveScope(p: Pick<Project, 'scope'> & { type?: ProjectType }): Scope {
+  const toegestaan = new Set(ruimte(p.type).werk)
+  return Object.fromEntries(Object.entries(p.scope).map(([k, v]) => [k, Boolean(v) && toegestaan.has(k as keyof Scope)])) as Scope
+}
 
 const EPS = 1e-9
 /** Naar boven afronden, zonder dat 3,0000000001 als 4 telt. */
@@ -136,12 +176,45 @@ export interface Oppervlakken {
   waterdichtOppervlak: number
   /** tegelhoogte, begrensd op de ruimtehoogte (m) */
   tegelhoogte: number
+  /** ruimtetype waarvoor gerekend is */
+  type: ProjectType
+  /** spatwand achter het aanrecht (keuken, m²) */
+  spatwand: number
+  /** omtrek minus deuren: lengte plinten / naad vloer-wand (m) */
+  plintLengte: number
 }
 
-export function berekenOppervlakken(a: Afmetingen, scope: Pick<Scope, 'inloopdouche'>): Oppervlakken {
+/**
+ * Oppervlakken van de ruimte. Bij een keuken is `wandNetto` de spatwand; bij vloer/woonkamer
+ * worden geen wanden betegeld (`wandNetto` = 0).
+ */
+export function berekenOppervlakken(a: Afmetingen, scope: Partial<Pick<Scope, 'inloopdouche' | 'spatwand'>>, type: ProjectType = 'badkamer'): Oppervlakken {
   const L = Math.max(0, a.lengte)
   const B = Math.max(0, a.breedte)
   const H = Math.max(0, a.hoogte)
+  if (type === 'keuken' || type === 'vloer') {
+    const omtrek = 2 * (L + B)
+    const vloer = L * B
+    const deurBreedte = som(a.openingen.filter((o) => o.type === 'deur').map((o) => Math.max(0, o.breedte)))
+    const sw = a.spatwand ?? { lengte: 0, hoogte: 0 }
+    const spatwand = type === 'keuken' && scope.spatwand ? Math.max(0, sw.lengte) * klem(sw.hoogte, 0, H || sw.hoogte) : 0
+    return {
+      omtrek,
+      wandBruto: spatwand,
+      openingenAftrek: 0,
+      wandNetto: spatwand,
+      vloer,
+      plafond: vloer,
+      wandBovenTegels: 0,
+      deurBreedte,
+      douchezoneWand: 0,
+      waterdichtOppervlak: vloer,
+      tegelhoogte: type === 'keuken' ? Math.max(0, sw.hoogte) : 0,
+      type,
+      spatwand,
+      plintLengte: Math.max(0, omtrek - deurBreedte),
+    }
+  }
   const th = klem(a.tegelhoogte, 0, H)
   const omtrek = 2 * (L + B)
   const wandBruto = omtrek * th
@@ -157,7 +230,7 @@ export function berekenOppervlakken(a: Afmetingen, scope: Pick<Scope, 'inloopdou
   )
   const wandBovenTegels = Math.max(0, omtrek * (H - th) - bovenAftrek)
   const wdHoogte = Math.min(REGELS.waterdichtHoogte, H)
-  const douchezoneWand = scope.inloopdouche
+  const douchezoneWand = type === 'badkamer' && scope.inloopdouche
     ? (Math.max(0, a.douche.breedte) + Math.max(0, a.douche.diepte)) * wdHoogte
     : 0
   return {
@@ -172,8 +245,15 @@ export function berekenOppervlakken(a: Afmetingen, scope: Pick<Scope, 'inloopdou
     douchezoneWand,
     waterdichtOppervlak: vloer + douchezoneWand,
     tegelhoogte: th,
+    type,
+    spatwand: 0,
+    plintLengte: Math.max(0, omtrek - deurBreedte),
   }
 }
+
+/** Oppervlakken voor een project (houdt rekening met ruimtetype en scope). */
+export const oppervlakkenVan = (p: Pick<Project, 'afmetingen' | 'scope'> & { type?: ProjectType }) =>
+  berekenOppervlakken(p.afmetingen, effectieveScope(p), p.type ?? 'badkamer')
 
 /** Tegels inclusief snijverlies, afgerond op hele dozen. */
 export function tegelBehoefte(m2: number, tegel: TileSpec, snijverliesPct: number) {
@@ -195,20 +275,29 @@ export function voegKgPerM2(tegel: TileSpec): number {
 export const langsteZijde = (t: TileSpec) => Math.max(t.lengte, t.breedte)
 
 /** Strekkende meters kitvoeg. */
-export function kitLengte(p: Pick<Project, 'scope' | 'afmetingen'>, o: Oppervlakken): number {
-  const s = p.scope
+export function kitLengte(p: Pick<Project, 'scope' | 'afmetingen'> & { type?: ProjectType }, o: Oppervlakken): number {
+  const s = effectieveScope(p)
   let m = 0
+  if (o.type === 'keuken') {
+    // naad werkblad–spatwand + beide zijkanten van de spatwand
+    if (s.spatwand) m += Math.max(0, p.afmetingen.spatwand.lengte) + 2 * Math.max(0, p.afmetingen.spatwand.hoogte)
+    return m
+  }
+  if (o.type === 'vloer') return 0
   if (s.wandtegels || s.vloertegels) m += Math.max(0, o.omtrek - o.deurBreedte) // naad vloer-wand
   if (s.wandtegels) m += 4 * o.tegelhoogte // verticale binnenhoeken
   if (s.inloopdouche) m += REGELS.kitGlaswandM + Math.max(0, p.afmetingen.douche.breedte)
   if (s.toilet) m += REGELS.kitToiletM
   if (s.wastafelmeubel) m += REGELS.kitWastafelM
+  if (s.fontein) m += REGELS.kitFonteinM
   return m
 }
 
 /** Strekkende meters tegelprofiel (bovenrand tegelwerk + dagkanten van ramen in de tegelzone). */
-export function profielLengte(p: Pick<Project, 'scope' | 'afmetingen'>, o: Oppervlakken): number {
-  if (!p.scope.wandtegels) return 0
+export function profielLengte(p: Pick<Project, 'scope' | 'afmetingen'> & { type?: ProjectType }, o: Oppervlakken): number {
+  const s = effectieveScope(p)
+  if (o.type === 'keuken') return s.spatwand ? Math.max(0, p.afmetingen.spatwand.lengte) + 2 * Math.max(0, p.afmetingen.spatwand.hoogte) : 0
+  if (!s.wandtegels || o.type === 'vloer') return 0
   let m = 0
   if (o.tegelhoogte < p.afmetingen.hoogte - 0.01) m += Math.max(0, o.omtrek - o.deurBreedte)
   for (const op of p.afmetingen.openingen) {
@@ -229,6 +318,7 @@ export type Groep =
   | 'waterdicht'
   | 'vloerverwarming'
   | 'tegels'
+  | 'vloer'
   | 'lijm-voeg'
   | 'afwerking'
   | 'sanitair'
@@ -239,6 +329,7 @@ export const GROEPEN: { id: Groep; naam: string }[] = [
   { id: 'waterdicht', naam: 'Waterdicht maken' },
   { id: 'vloerverwarming', naam: 'Vloerverwarming' },
   { id: 'tegels', naam: 'Tegels' },
+  { id: 'vloer', naam: 'Vloer & plinten' },
   { id: 'lijm-voeg', naam: 'Lijm, voeg & toebehoren' },
   { id: 'afwerking', naam: 'Kit, profielen & afwerking' },
   { id: 'sanitair', naam: 'Sanitair' },
@@ -274,6 +365,12 @@ export type ProductId =
   | 'sifon'
   | 'bigbag'
   | 'afdekset'
+  | 'fontein'
+  | 'laminaat'
+  | 'pvc'
+  | 'ondervloer'
+  | 'plint'
+  | 'montagekit'
 
 export interface MateriaalRegel {
   id: ProductId
@@ -307,8 +404,9 @@ const fmtTegel = (t: TileSpec) => `${nl(t.lengte, 1)} × ${nl(t.breedte, 1)} cm`
 
 /** Berekent alle materialen voor een project. */
 export function berekenMaterialen(p: Project): MateriaalRegel[] {
-  const s = p.scope
-  const o = berekenOppervlakken(p.afmetingen, s)
+  const s = effectieveScope(p)
+  const type = p.type ?? 'badkamer'
+  const o = berekenOppervlakken(p.afmetingen, s, type)
   const sv = p.snijverlies
   const regels: MateriaalRegel[] = []
   const add = (r: MateriaalRegel) => {
@@ -317,12 +415,14 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
 
   // — Sloop & afvoer
   if (s.sloopwerk) {
-    const m3 = (o.wandNetto * REGELS.sloopWandM + o.vloer * REGELS.sloopVloerM) * REGELS.sloopOpbulk
+    const vloerDikte = type === 'vloer' ? REGELS.sloopLegvloerM : type === 'keuken' ? REGELS.sloopVloerDunM : REGELS.sloopVloerM
+    const m3 = (o.wandNetto * REGELS.sloopWandM + o.vloer * vloerDikte) * REGELS.sloopOpbulk
+    const wandDeel = o.wandNetto > 0 ? `${nl(o.wandNetto)} m² ${type === 'keuken' ? 'spatwand' : 'wand'} × 2,5 cm + ` : ''
     add({
       id: 'bigbag', groep: 'sloop', naam: 'Big bag voor puin', spec: 'inhoud 1 m³',
       nodig: m3, nodigEenheid: 'm³', aantal: Math.max(1, omhoog(m3 / REGELS.bigBagM3)), verpakking: 'stuk',
       prijsAantal: Math.max(1, omhoog(m3 / REGELS.bigBagM3)),
-      toelichting: `(${nl(o.wandNetto)} m² wand × 2,5 cm + ${nl(o.vloer)} m² vloer × 8 cm) × 1,5 opbulk ≈ ${nl(m3)} m³`,
+      toelichting: `(${wandDeel}${nl(o.vloer)} m² vloer × ${nl(vloerDikte * 100, 1)} cm) × 1,5 opbulk ≈ ${nl(m3)} m³`,
     })
     add({
       id: 'afdekset', groep: 'sloop', naam: 'Afdekfolie, stucloper & stofmaskers',
@@ -333,7 +433,8 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
 
   // — Voorbereiding
   const tegelVloer = s.vloertegels || s.egaliseren
-  const primerM2 = (s.wandtegels ? o.wandNetto : 0) + (tegelVloer ? o.vloer : 0) + (s.stucwerk ? o.plafond + o.wandBovenTegels : 0)
+  const tegelWand = type === 'keuken' ? s.spatwand : s.wandtegels
+  const primerM2 = (tegelWand ? o.wandNetto : 0) + (tegelVloer ? o.vloer : 0) + (s.stucwerk ? o.plafond + o.wandBovenTegels : 0)
   if (primerM2 > 0) {
     const liter = primerM2 * REGELS.primerLPerM2
     const bussen = omhoog(liter / REGELS.primerBusL)
@@ -405,7 +506,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
   const lijmUitleg: string[] = []
   const voegUitleg: string[] = []
   const tegelTypes: [ProductId, string, number, TileSpec, boolean][] = [
-    ['wandtegel', 'Wandtegels', o.wandNetto, p.wandtegel, s.wandtegels],
+    ['wandtegel', type === 'keuken' ? 'Wandtegels spatwand' : 'Wandtegels', o.wandNetto, p.wandtegel, tegelWand],
     ['vloertegel', 'Vloertegels', o.vloer, p.vloertegel, s.vloertegels],
   ]
   for (const [id, naam, m2, tegel, actief] of tegelTypes) {
@@ -425,6 +526,44 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     voegKg += m2 * v
     voegUitleg.push(`${nl(m2)} m² × ${nl(v)} kg/m²`)
   }
+  // — Laminaat / PVC, ondervloer en plinten (vloer & woonkamer)
+  if (s.legvloer && o.vloer > 0) {
+    const lv = p.legvloer
+    const pak = lv.m2PerPak > 0 ? lv.m2PerPak : 2
+    const m2Incl = o.vloer * (1 + Math.max(0, sv) / 100)
+    const pakken = omhoog(m2Incl / pak)
+    const pvc = lv.soort === 'pvc'
+    add({
+      id: pvc ? 'pvc' : 'laminaat', groep: 'vloer', naam: pvc ? 'PVC-klikvloer' : 'Laminaat', spec: pvc ? 'klik, incl. toplaag 0,55 mm' : 'klik, AC4',
+      nodig: m2Incl, nodigEenheid: 'm²', aantal: pakken, verpakking: `pak à ${nl(pak)} m²`, prijsAantal: pakken * pak,
+      toelichting: `${nl(o.vloer)} m² + ${nl(sv, 1)}% snijverlies = ${nl(m2Incl)} m² ÷ ${nl(pak)} m² per pak`,
+    })
+  }
+  if (s.ondervloer && o.vloer > 0) {
+    const m2 = o.vloer * (1 + REGELS.ondervloerOverlap)
+    const rollen = omhoog(m2 / REGELS.ondervloerRolM2)
+    add({
+      id: 'ondervloer', groep: 'vloer', naam: 'Ondervloer', spec: s.legvloer && p.legvloer.soort === 'pvc' ? 'voor PVC, 1,5 mm' : 'voor laminaat, 3 mm',
+      nodig: m2, nodigEenheid: 'm²', aantal: rollen, verpakking: `rol à ${REGELS.ondervloerRolM2} m²`, prijsAantal: rollen, inhoud: REGELS.ondervloerRolM2, verpakkingSoort: 'rol',
+      toelichting: `${nl(o.vloer)} m² + 5% overlap = ${nl(m2)} m². Op een stenen vloer: kies een ondervloer met dampremmende laag.`,
+    })
+  }
+  if (s.plinten && o.plintLengte > 0) {
+    const m = o.plintLengte * (1 + REGELS.plintVerlies)
+    const stuks = omhoog(m / REGELS.plintLengteM)
+    add({
+      id: 'plint', groep: 'vloer', naam: 'Plinten MDF wit', spec: '7 cm hoog',
+      nodig: m, nodigEenheid: 'm', aantal: stuks, verpakking: `lengte à ${nl(REGELS.plintLengteM, 1)} m`, prijsAantal: stuks, inhoud: REGELS.plintLengteM, verpakkingSoort: 'lengte',
+      toelichting: `(${nl(o.omtrek)} m omtrek − ${nl(o.deurBreedte)} m deuren) + 10% zaagverlies = ${nl(m, 1)} m`,
+    })
+    const kokers = omhoog(o.plintLengte / REGELS.montagekitMPerKoker)
+    add({
+      id: 'montagekit', groep: 'vloer', naam: 'Montagekit voor plinten',
+      nodig: kokers * REGELS.kitKokerMl, nodigEenheid: 'ml', aantal: kokers, verpakking: `koker à ${REGELS.kitKokerMl} ml`, prijsAantal: kokers, inhoud: REGELS.kitKokerMl, verpakkingSoort: 'koker',
+      toelichting: `${nl(o.plintLengte, 1)} m plint ÷ ${REGELS.montagekitMPerKoker} m per koker`,
+    })
+  }
+
   if (lijmKg > 0) {
     const zakken = omhoog(lijmKg / REGELS.lijmZakKg)
     add({
@@ -456,9 +595,11 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     const m = kitLengte(p, o)
     const kokers = omhoog(m / REGELS.kitMeterPerKoker)
     add({
-      id: 'kit', groep: 'afwerking', naam: 'Sanitairkit (schimmelwerend)',
+      id: 'kit', groep: 'afwerking', naam: type === 'keuken' ? 'Sanitairkit (keuken, schimmelwerend)' : 'Sanitairkit (schimmelwerend)',
       nodig: m * REGELS.kitMlPerM, nodigEenheid: 'ml', aantal: kokers, verpakking: `koker à ${REGELS.kitKokerMl} ml`, prijsAantal: kokers, inhoud: REGELS.kitKokerMl, verpakkingSoort: 'koker',
-      toelichting: `${nl(m, 1)} m kitvoeg ÷ ${REGELS.kitMeterPerKoker} m per koker`,
+      toelichting: type === 'keuken'
+        ? `Werkblad ${nl(p.afmetingen.spatwand.lengte)} m + 2 zijkanten = ${nl(m, 1)} m kitvoeg ÷ ${REGELS.kitMeterPerKoker} m per koker`
+        : `${nl(m, 1)} m kitvoeg ÷ ${REGELS.kitMeterPerKoker} m per koker`,
     })
   }
   const prof = profielLengte(p, o)
@@ -467,7 +608,7 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     add({
       id: 'profiel', groep: 'afwerking', naam: 'Tegelprofiel aluminium', spec: `voor ${nl(p.wandtegel.dikte, 1)} mm tegel`,
       nodig: prof, nodigEenheid: 'm', aantal: stuks, verpakking: `lengte à ${nl(REGELS.profielLengteM, 1)} m`, prijsAantal: stuks, inhoud: REGELS.profielLengteM, verpakkingSoort: 'lengte',
-      toelichting: `Bovenrand tegelwerk en dagkanten ramen = ${nl(prof, 1)} m`,
+      toelichting: type === 'keuken' ? `Bovenrand en zijkanten spatwand = ${nl(prof, 1)} m` : `Bovenrand tegelwerk en dagkanten ramen = ${nl(prof, 1)} m`,
     })
   }
   if (s.stucwerk) {
@@ -508,6 +649,9 @@ export function berekenMaterialen(p: Project): MateriaalRegel[] {
     stuk('spiegel', 'Spiegel met verlichting', '80 cm', 'Vast per wastafel')
     stuk('sifon', 'Sifon & afvoerset', 'design', 'Vast per wastafel')
   }
+  if (s.fontein) {
+    stuk('fontein', 'Fonteinset compleet', 'fontein, kraan, sifon en stopkraan', 'Vast per toilet')
+  }
 
   return regels
 }
@@ -520,21 +664,28 @@ export interface ArbeidRegel {
 
 /** Indicatieve arbeidsuren per onderdeel. */
 export function berekenArbeid(p: Project): ArbeidRegel[] {
-  const s = p.scope
-  const o = berekenOppervlakken(p.afmetingen, s)
+  const s = effectieveScope(p)
+  const type = p.type ?? 'badkamer'
+  const o = berekenOppervlakken(p.afmetingen, s, type)
   const r: ArbeidRegel[] = []
   const add = (scope: string, omschrijving: string, uren: number) => {
     if (uren > 0) r.push({ scope, omschrijving, uren: rond(uren, 1) })
   }
-  if (s.sloopwerk) add('sloopwerk', 'Sloopwerk en afvoer', (o.wandNetto + o.vloer) * ARBEID.sloopwerkPerM2)
+  if (s.sloopwerk)
+    add('sloopwerk', type === 'vloer' ? 'Oude vloer verwijderen' : 'Sloopwerk en afvoer', type === 'vloer' ? o.vloer * ARBEID.sloopLegvloerPerM2 : (o.wandNetto + o.vloer) * ARBEID.sloopwerkPerM2)
   if (s.egaliseren) add('egaliseren', 'Vloer egaliseren', o.vloer * ARBEID.egaliserenPerM2 + ARBEID.egaliserenVast)
   if (s.waterdicht) add('waterdicht', 'Waterdicht maken', o.waterdichtOppervlak * ARBEID.waterdichtPerM2)
   if (s.vloerverwarming) add('vloerverwarming', 'Vloerverwarming leggen', o.vloer * ARBEID.vloerverwarmingPerM2 + ARBEID.vloerverwarmingVast)
-  if (s.wandtegels) add('wandtegels', 'Wandtegels zetten', o.wandNetto * ARBEID.wandtegelsPerM2)
+  if (s.wandtegels && type !== 'keuken') add('wandtegels', 'Wandtegels zetten', o.wandNetto * ARBEID.wandtegelsPerM2)
+  if (s.spatwand && type === 'keuken') add('spatwand', 'Spatwand tegelen', o.wandNetto * ARBEID.spatwandPerM2 + ARBEID.spatwandVast)
+  if (s.legvloer) add('legvloer', p.legvloer.soort === 'pvc' ? 'PVC-vloer leggen' : 'Laminaat leggen', o.vloer * (p.legvloer.soort === 'pvc' ? ARBEID.pvcPerM2 : ARBEID.laminaatPerM2))
+  if (s.ondervloer) add('ondervloer', 'Ondervloer leggen', o.vloer * ARBEID.ondervloerPerM2)
+  if (s.plinten) add('plinten', 'Plinten plaatsen', o.plintLengte * ARBEID.plintenPerM)
   if (s.vloertegels) add('vloertegels', 'Vloertegels leggen', o.vloer * ARBEID.vloertegelsPerM2)
   if (s.inloopdouche) add('inloopdouche', 'Inloopdouche plaatsen', ARBEID.inloopdouche)
   if (s.toilet) add('toilet', 'Hangtoilet plaatsen', ARBEID.toilet)
   if (s.wastafelmeubel) add('wastafelmeubel', 'Wastafelmeubel plaatsen', ARBEID.wastafelmeubel)
+  if (s.fontein) add('fontein', 'Fonteintje plaatsen', ARBEID.fontein)
   if (s.kitwerk) add('kitwerk', 'Kitwerk', kitLengte(p, o) * ARBEID.kitwerkPerM)
   if (s.stucwerk) add('stucwerk', 'Stucwerk en schilderen', (o.plafond + o.wandBovenTegels) * ARBEID.stucwerkPerM2)
   return r
