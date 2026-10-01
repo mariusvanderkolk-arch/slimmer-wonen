@@ -152,4 +152,17 @@ export interface Project {
   voorbeeldId?: string
   planning?: Planning
   offerte?: OfferteStatus
+  /** laatste AI-fotoanalyse (suggesties) */
+  aiAnalyse?: AiResultaat
+}
+
+/** Opgeslagen AI-analyse bij een project. */
+export interface AiResultaat {
+  datum: number
+  provider: string
+  model: string
+  fotoIds: string[]
+  analyse: import('./ai').AiAnalyse
+  /** welke suggesties al zijn overgenomen (bijv. 'werk:wandtegels', 'maat:lengte') */
+  overgenomen: string[]
 }

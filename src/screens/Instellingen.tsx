@@ -1,12 +1,15 @@
-import { useEffect, useRef, type ReactNode } from 'react'
-import { Building2, FileText, ImagePlus, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Building2, Check, ExternalLink, Eye, EyeOff, FileText, ImagePlus, KeyRound, Loader2, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
 import { Button, Card, CardHeader, NumberField, PageTitle, TextField } from '../components/ui'
 import { toast } from '../components/Toast'
+import { actieveAi, AiFout, PROVIDERS, providerInfo, testVerbinding, type AiProvider } from '../lib/ai'
+import { aiStore, useAi } from '../lib/aiStore'
 import { bedrijfStore, btwGeldig, emailGeldig, ibanGeldig, kvkGeldig, useBedrijf, verkleinLogo, type Bedrijf } from '../lib/bedrijf'
 
 const SECTIES = [
   { id: 'bedrijf', label: 'Bedrijf' },
   { id: 'offerte', label: 'Offerte' },
+  { id: 'ai', label: 'AI' },
 ]
 
 export function Instellingen({ sectie }: { sectie?: string }) {
@@ -34,6 +37,7 @@ export function Instellingen({ sectie }: { sectie?: string }) {
       <div className="mt-4 space-y-5">
         <BedrijfSectie />
         <OfferteSectie />
+        <AiSectie />
       </div>
     </div>
   )
@@ -135,6 +139,180 @@ function OfferteSectie() {
           </p>
           <div className="sm:col-span-3">
             <TextField label="Betaaltermijn / voorwaarden" value={b.betaaltermijn} onChange={(v) => zet({ betaaltermijn: v })} placeholder="Bijv. 30% bij opdracht, rest binnen 14 dagen na oplevering." />
+          </div>
+        </div>
+      </Card>
+    </Sectie>
+  )
+}
+
+function AiSectie() {
+  const inst = useAi()
+  const p = providerInfo(inst.provider)
+  const sleutel = inst.sleutels[p.id] ?? ''
+  const [toon, setToon] = useState(false)
+  const [test, setTest] = useState<{ bezig?: boolean; ok?: boolean; fout?: string }>({})
+  const zet = (f: (i: typeof inst) => typeof inst) => {
+    setTest({})
+    if (!aiStore.update(f)) toast(aiStore.fout() ?? 'Opslaan mislukt', 'fout')
+  }
+  const kies = (id: AiProvider) => zet((i) => ({ ...i, provider: id }))
+  const ai = actieveAi(inst)
+  const aantalSleutels = Object.values(inst.sleutels).filter(Boolean).length
+
+  async function doeTest() {
+    if (!ai) return
+    setTest({ bezig: true })
+    try {
+      await testVerbinding(ai)
+      setTest({ ok: true })
+    } catch (e) {
+      setTest({ fout: e instanceof AiFout ? e.message : 'Test mislukt.' })
+    }
+  }
+
+  return (
+    <Sectie id="ai">
+      <Card>
+        <CardHeader
+          icon={<Sparkles className="h-5 w-5" />}
+          title="AI-fotoanalyse"
+          sub="Optioneel. Met een eigen API-sleutel kan de app foto's laten beoordelen: sanitair en tegels herkennen, werkzaamheden voorstellen en maten schatten."
+        />
+        <div className="p-5 sm:p-6">
+          <fieldset>
+            <legend className="mb-2 text-[0.8rem] font-medium text-ink-soft">Kies een AI-dienst</legend>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {PROVIDERS.map((x) => {
+                const actief = x.id === inst.provider
+                return (
+                  <label
+                    key={x.id}
+                    className={`relative flex cursor-pointer flex-col gap-1 rounded-xl p-4 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold-300 ${actief ? 'bg-gold-100/50 ring-2 ring-gold-500' : 'bg-white/70 ring-1 ring-sand-300 hover:ring-gold-400'}`}
+                  >
+                    <input type="radio" name="ai-provider" value={x.id} checked={actief} onChange={() => kies(x.id)} className="sr-only" />
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-[0.92rem] font-semibold text-ink">{x.naam}</span>
+                      {actief && (
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-gold-500 text-white">
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                        </span>
+                      )}
+                    </span>
+                    <span className={`text-[0.72rem] font-semibold ${x.id === 'gemini' ? 'text-[#4c6547]' : 'text-gold-700'}`}>{x.label}</span>
+                    <span className="text-[0.78rem] leading-snug text-ink-muted">{x.notitie}</span>
+                    {inst.sleutels[x.id] && <span className="text-[0.72rem] font-medium text-ink-soft">✓ Sleutel ingesteld</span>}
+                  </label>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          {p.id === 'gemini' && (
+            <div className="mt-5 rounded-xl bg-sand-50 p-4 ring-1 ring-sand-200">
+              <p className="text-sm font-semibold text-ink">Gratis Gemini-sleutel aanmaken (2 minuten)</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-[0.84rem] leading-relaxed text-ink-soft">
+                <li>
+                  Ga naar{' '}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-ink underline underline-offset-2">
+                    aistudio.google.com/apikey <ExternalLink className="h-3.5 w-3.5" />
+                  </a>{' '}
+                  en log in met je Google-account.
+                </li>
+                <li>Accepteer de voorwaarden en klik op <strong>Create API key</strong> (API-sleutel maken).</li>
+                <li>Kopieer de sleutel (begint meestal met <code className="rounded bg-white px-1 text-[0.78rem]">AIza</code>) en plak hem hieronder.</li>
+                <li>Klik op <strong>Verbinding testen</strong>. Voor gratis gebruik zijn geen betaalgegevens nodig.</li>
+              </ol>
+            </div>
+          )}
+          {p.id !== 'gemini' && p.sleutelUrl && (
+            <p className="mt-4 text-[0.82rem] text-ink-soft">
+              Sleutel aanmaken:{' '}
+              <a href={p.sleutelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-ink underline underline-offset-2">
+                {p.sleutelUrl.replace('https://', '')} <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              . Stel daar bij voorkeur een bestedingslimiet in.
+            </p>
+          )}
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <div className="flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <TextField
+                    label={`API-sleutel ${p.naam}`}
+                    type={toon ? 'text' : 'password'}
+                    autoComplete="off"
+                    value={sleutel}
+                    placeholder="Plak hier je sleutel"
+                    onChange={(v) => zet((i) => ({ ...i, sleutels: { ...i.sleutels, [p.id]: v.trim() } }))}
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  className="!h-12 !px-3.5"
+                  aria-label={toon ? 'Sleutel verbergen' : 'Sleutel tonen'}
+                  aria-pressed={toon}
+                  icon={toon ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  onClick={() => setToon((t) => !t)}
+                />
+              </div>
+            </div>
+            <TextField
+              label="Model"
+              value={inst.modellen[p.id] ?? ''}
+              placeholder={p.model || 'bijv. llava'}
+              hint={p.model ? `Leeg = ${p.model}` : 'Een model dat foto’s kan lezen'}
+              onChange={(v) => zet((i) => ({ ...i, modellen: { ...i.modellen, [p.id]: v.trim() } }))}
+            />
+            {p.id === 'eigen' && (
+              <TextField
+                label="Basis-URL"
+                type="url"
+                inputMode="url"
+                value={inst.baseUrl}
+                placeholder="https://…/v1"
+                hint="Zonder /chat/completions; de dienst moet verzoeken vanuit de browser (CORS) toestaan."
+                onChange={(v) => zet((i) => ({ ...i, baseUrl: v.trim() }))}
+              />
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3" aria-live="polite">
+            <Button variant="primary" disabled={!ai || test.bezig} onClick={doeTest} icon={test.bezig ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}>
+              Verbinding testen
+            </Button>
+            {test.ok && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#4c6547]">
+                <Check className="h-4 w-4" /> Werkt! Je kunt foto’s laten analyseren bij Opmeten.
+              </span>
+            )}
+            {test.fout && <span className="text-sm text-rust" role="alert">{test.fout}</span>}
+          </div>
+
+          <div className="mt-6 flex gap-3 rounded-xl border border-gold-200 bg-gold-100/50 px-4 py-3.5 text-[0.82rem] leading-relaxed text-ink-soft">
+            <ShieldAlert className="mt-0.5 h-4.5 w-4.5 shrink-0 text-gold-700" />
+            <div>
+              <p className="font-semibold text-ink">Over je sleutel en privacy</p>
+              <p>
+                De sleutel wordt alleen in deze browser op dit apparaat bewaard en rechtstreeks naar de gekozen dienst gestuurd, nooit naar ons. Iedereen met toegang tot deze
+                browser kan hem uitlezen: verwijder hem op gedeelde apparaten. De sleutel gaat niet mee in back-ups. Foto’s worden alleen verstuurd als jij op “Analyseer” drukt.
+              </p>
+              {aantalSleutels > 0 && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  className="mt-2 -ml-3"
+                  icon={<Trash2 className="h-4 w-4" />}
+                  onClick={() => {
+                    zet((i) => ({ ...i, sleutels: {} }))
+                    toast('Alle API-sleutels verwijderd')
+                  }}
+                >
+                  {aantalSleutels === 1 ? 'Sleutel verwijderen' : `Alle ${aantalSleutels} sleutels verwijderen`}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Card>

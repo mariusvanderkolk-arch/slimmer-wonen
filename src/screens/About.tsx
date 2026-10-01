@@ -27,10 +27,15 @@ const BLOKKEN = [
   },
   {
     icon: Camera,
-    titel: "Foto's & automatisch opmeten",
-    badge: <Badge tone="gold">Binnenkort</Badge>,
+    titel: "Foto's & AI-analyse",
+    badge: <Badge tone="gold">Optioneel, eigen sleutel</Badge>,
+    actie: (
+      <Button size="sm" variant="secondary" className="mt-3" onClick={() => ga('/instellingen/ai')}>
+        AI instellen
+      </Button>
+    ),
     tekst:
-      "Foto's maken en bewaren bij een project werkt al. Automatisch opmeten en foto-analyse met AI zijn nog niet actief; de berekening gebruikt de handmatig ingevoerde maten.",
+      "Foto's maken en bewaren werkt altijd (verkleind, alleen op dit apparaat). Met een eigen API-sleutel (gratis te proberen met Google Gemini, of betaald bij OpenAI/xAI) kan een AI-model je foto's beoordelen: elementen herkennen, werkzaamheden voorstellen en maten schatten. Dat zijn suggesties die je zelf overneemt; maten die de AI schat zijn grof, dus meet altijd na. Foto's gaan alleen naar die dienst als jij op Analyseer drukt.",
   },
   {
     icon: Database,

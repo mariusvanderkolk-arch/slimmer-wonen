@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { AppWindow, CookingPot, DoorOpen, Layers, LayoutGrid, Plus, Ruler, Settings2, ShowerHead, Trash2 } from 'lucide-react'
 import { Fotos } from '../components/Fotos'
+
+const AiAnalyse = lazy(() => import('../components/AiAnalyse'))
 import { Plattegrond } from '../components/Plattegrond'
 import { Button, Card, CardHeader, NumberField } from '../components/ui'
 import { LEGVLOER_PAK, uid } from '../lib/defaults'
@@ -72,6 +74,9 @@ export function Measure({ p }: { p: Project }) {
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
       <div className="space-y-5">
         <Fotos p={p} />
+        <Suspense fallback={<div className="card h-40 animate-pulse" aria-hidden="true" />}>
+          <AiAnalyse p={p} />
+        </Suspense>
 
         <Card>
           <CardHeader

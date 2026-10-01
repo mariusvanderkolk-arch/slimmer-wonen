@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Camera, ImagePlus, Images, ScanLine, Trash2, X } from 'lucide-react'
-import { Badge, Button, Card, CardHeader } from './ui'
+import { Camera, ImagePlus, Images, Trash2, X } from 'lucide-react'
+import { Button, Card, CardHeader } from './ui'
 import { bewaarFoto, useFotoUrl, verkleinFoto, verwijderFoto } from '../lib/photos'
 import { projectStore } from '../lib/store'
 import { uid } from '../lib/defaults'
@@ -69,7 +69,7 @@ export function Fotos({ p }: { p: Project }) {
               <Images className="h-5 w-5" />
             </span>
             <p className="text-sm leading-snug text-ink-muted">
-              Nog geen foto's. Foto's worden alleen op dit apparaat bewaard en horen bij dit project.
+              Nog geen foto's. Ze worden verkleind en alleen op dit apparaat bewaard. Handig voor later, en voor de optionele AI-analyse hieronder.
             </p>
           </div>
         ) : (
@@ -85,17 +85,6 @@ export function Fotos({ p }: { p: Project }) {
           </ul>
         )}
 
-        <div className="mt-5 flex items-start gap-3 rounded-xl bg-sand-50 px-4 py-3.5 ring-1 ring-sand-200">
-          <ScanLine className="mt-0.5 h-4.5 w-4.5 shrink-0 text-gold-600" />
-          <div className="text-[0.82rem] leading-relaxed text-ink-soft">
-            <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
-              Automatisch opmeten met de camera <Badge tone="gold">Binnenkort</Badge>
-            </p>
-            <p className="mt-0.5">
-              Foto-analyse en automatisch opmeten zijn nog niet actief. De berekening gebruikt de maten die je hieronder invult.
-            </p>
-          </div>
-        </div>
       </div>
       {open && <Lightbox foto={open} onClose={() => setOpen(undefined)} onDelete={() => verwijder(open)} />}
     </Card>

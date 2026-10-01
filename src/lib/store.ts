@@ -37,16 +37,40 @@ function laad(): Project[] {
 
 export let opslagFout: string | null = null
 
-function bewaar(nieuw: Project[]) {
+/** Status van de laatste opslag (voor de opslag-indicator). */
+export interface OpslagStatus {
+  /** tijdstip van de laatste geslaagde opslag (ms) */
+  opgeslagen: number | null
+  fout: string | null
+}
+let status: OpslagStatus = { opgeslagen: null, fout: null }
+const statusLuisteraars = new Set<() => void>()
+
+function bewaar(nieuw: Project[]): boolean {
   projecten = nieuw
+  let ok = true
   try {
     localStorage.setItem(SLEUTEL, JSON.stringify(nieuw))
     opslagFout = null
+    status = { opgeslagen: Date.now(), fout: null }
   } catch {
-    opslagFout = 'Opslaan is niet gelukt: de opslag van je browser is vol.'
+    ok = false
+    opslagFout = 'Opslaan is niet gelukt: de opslag van je browser is vol. Maak een back-up en verwijder oude projecten of foto’s.'
+    status = { ...status, fout: opslagFout }
   }
   luisteraars.forEach((f) => f())
+  statusLuisteraars.forEach((f) => f())
+  return ok
 }
+
+export const useOpslagStatus = () =>
+  useSyncExternalStore(
+    (f) => {
+      statusLuisteraars.add(f)
+      return () => statusLuisteraars.delete(f)
+    },
+    () => status,
+  )
 
 const abonneer = (f: () => void) => {
   luisteraars.add(f)
@@ -61,16 +85,16 @@ export const projectStore = {
   alle: () => projecten,
   /** Vervangt alle projecten (bijv. bij het terugzetten van een back-up). */
   vervangAlles(nieuw: Project[]) {
-    bewaar(nieuw.map(normaliseerProject))
+    return bewaar(nieuw.map(normaliseerProject))
   },
   voegToe(p: Project) {
-    bewaar([p, ...projecten])
+    return bewaar([p, ...projecten])
   },
   werkBij(id: string, wijzig: (p: Project) => Project) {
-    bewaar(projecten.map((p) => (p.id === id ? { ...wijzig(p), updatedAt: Date.now() } : p)))
+    return bewaar(projecten.map((p) => (p.id === id ? { ...wijzig(p), updatedAt: Date.now() } : p)))
   },
   verwijder(id: string) {
-    bewaar(projecten.filter((p) => p.id !== id))
+    return bewaar(projecten.filter((p) => p.id !== id))
   },
   herstelVoorbeelden() {
     const eigen = projecten.filter((p) => !p.voorbeeld)
