@@ -63,6 +63,9 @@ export const prijsStore = {
   importeer(extra: EigenPrijzen) {
     bewaar(voegSamen(eigen, extra))
   },
+  vervang(nieuw: EigenPrijzen) {
+    bewaar(nieuw)
+  },
   allesTerug() {
     bewaar({})
   },

@@ -49,7 +49,12 @@ const BLOKKEN = [
     titel: 'Jouw gegevens',
     badge: <Badge tone="sage">Lokaal</Badge>,
     tekst:
-      "Projecten en foto's worden alleen op dit apparaat opgeslagen (in de browser). Er gaat niets naar een server. Wis je de browsergegevens, dan zijn ook de projecten weg.",
+      "Projecten, foto's, prijzen en bedrijfsgegevens worden alleen op dit apparaat opgeslagen (in de browser). Er gaat niets naar een server, behalve foto's die jij zelf laat analyseren door de AI-dienst die je kiest. Wis je de browsergegevens, dan is alles weg: maak dus regelmatig een back-up via Instellingen → Back-up. Synchroniseren tussen apparaten via de cloud komt binnenkort; tot die tijd neem je alles mee met dat back-upbestand.",
+    actie: (
+      <Button size="sm" variant="secondary" className="mt-3" onClick={() => ga('/instellingen/backup')}>
+        Back-up maken
+      </Button>
+    ),
   },
 ]
 

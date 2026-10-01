@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Building2, Check, ExternalLink, Eye, EyeOff, FileText, ImagePlus, KeyRound, Loader2, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
-import { Button, Card, CardHeader, NumberField, PageTitle, TextField } from '../components/ui'
+import { Building2, Check, CloudOff, DatabaseBackup, Download, Upload, ExternalLink, Eye, EyeOff, FileText, ImagePlus, KeyRound, Loader2, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
+import { Badge, Button, Card, CardHeader, Dialog, NumberField, PageTitle, TextField } from '../components/ui'
+import { leesBackup, samenvatting, type Backup, type ImportModus } from '../lib/backup'
+import { backupStatus, exporteerAlles, importeerBackup, opslagSchatting } from '../lib/backupActies'
+import { useProjecten } from '../lib/store'
+import { useEigenPrijzen } from '../lib/prijsStore'
+import { telEigenPrijzen } from '../lib/eigenPrijzen'
 import { toast } from '../components/Toast'
 import { actieveAi, AiFout, PROVIDERS, providerInfo, testVerbinding, type AiProvider } from '../lib/ai'
 import { aiStore, useAi } from '../lib/aiStore'
@@ -10,6 +15,7 @@ const SECTIES = [
   { id: 'bedrijf', label: 'Bedrijf' },
   { id: 'offerte', label: 'Offerte' },
   { id: 'ai', label: 'AI' },
+  { id: 'backup', label: 'Back-up' },
 ]
 
 export function Instellingen({ sectie }: { sectie?: string }) {
@@ -38,6 +44,7 @@ export function Instellingen({ sectie }: { sectie?: string }) {
         <BedrijfSectie />
         <OfferteSectie />
         <AiSectie />
+        <BackupSectie />
       </div>
     </div>
   )
@@ -316,6 +323,182 @@ function AiSectie() {
           </div>
         </div>
       </Card>
+    </Sectie>
+  )
+}
+
+const mb = (b: number) =>
+  b < 1024 * 1024
+    ? `${Math.max(1, Math.round(b / 1024))} kB`
+    : b < 1024 ** 3
+      ? `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`
+      : `${(b / 1024 ** 3).toFixed(1).replace('.', ',')} GB`
+const datumTijd = (t: number) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(t))
+
+function BackupSectie() {
+  const projecten = useProjecten()
+  const prijzen = useEigenPrijzen()
+  const status = backupStatus.use()
+  const [opslag, setOpslag] = useState<{ gebruikt: number; beschikbaar: number } | null>(null)
+  const [bezig, setBezig] = useState(false)
+  const [kandidaat, setKandidaat] = useState<Backup | null>(null)
+  const [modus, setModus] = useState<ImportModus>('samenvoegen')
+  const [fout, setFout] = useState<string>()
+  const bestand = useRef<HTMLInputElement>(null)
+  const fotos = projecten.reduce((n, p) => n + p.fotos.length, 0)
+  const eigen = projecten.filter((p) => !p.voorbeeld).length
+
+  useEffect(() => {
+    opslagSchatting().then(setOpslag)
+  }, [projecten])
+
+  async function exporteer() {
+    setBezig(true)
+    try {
+      const r = await exporteerAlles()
+      toast(`Back-up gedownload (${mb(r.bytes)})${r.ontbrekend ? ` · ${r.ontbrekend} foto('s) niet gevonden` : ''}`)
+    } catch {
+      toast('Back-up maken is niet gelukt.', 'fout')
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  async function kies(files: FileList | null) {
+    const f = files?.[0]
+    if (bestand.current) bestand.current.value = ''
+    if (!f) return
+    setFout(undefined)
+    try {
+      setKandidaat(leesBackup(await f.text()))
+      setModus('samenvoegen')
+    } catch (e) {
+      setFout((e as Error).message)
+    }
+  }
+
+  async function zetTerug() {
+    if (!kandidaat) return
+    setBezig(true)
+    try {
+      await importeerBackup(kandidaat, modus)
+      const s = samenvatting(kandidaat)
+      toast(`Back-up teruggezet: ${s.projecten} projecten, ${s.fotos} foto's`)
+      setKandidaat(null)
+    } catch (e) {
+      toast((e as Error).message || 'Terugzetten mislukt.', 'fout')
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  const s = kandidaat ? samenvatting(kandidaat) : null
+  return (
+    <Sectie id="backup">
+      <Card>
+        <CardHeader
+          icon={<DatabaseBackup className="h-5 w-5" />}
+          title="Back-up"
+          sub="Alles staat alleen in deze browser. Download regelmatig een back-up, zodat je niets kwijtraakt als je browsergegevens wist of van telefoon wisselt."
+        />
+        <div className="p-5 sm:p-6">
+          <div className="grid gap-3 rounded-xl bg-sand-50 p-4 ring-1 ring-sand-200 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="text-[0.85rem] text-ink-soft">
+              <p className="font-semibold text-ink">
+                {status.laatste ? `Laatste back-up: ${datumTijd(status.laatste)}` : 'Nog nooit een back-up gemaakt'}
+              </p>
+              <p className="mt-0.5">
+                {projecten.length} projecten ({eigen} eigen) · {fotos} foto's · {telEigenPrijzen(prijzen)} eigen prijzen · bedrijfsgegevens
+              </p>
+              {opslag && (
+                <div className="mt-2.5">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-sand-200" role="progressbar" aria-label="Gebruikte opslag" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((opslag.gebruikt / opslag.beschikbaar) * 100)}>
+                    <div className="h-full rounded-full bg-gold-500" style={{ width: `${Math.max(1, Math.min(100, (opslag.gebruikt / opslag.beschikbaar) * 100))}%` }} />
+                  </div>
+                  <p className="mt-1 text-[0.75rem] text-ink-muted">
+                    Opslag in gebruik: {mb(opslag.gebruikt)} van ca. {mb(opslag.beschikbaar)} die de browser toestaat
+                  </p>
+                </div>
+              )}
+            </div>
+            <Button variant="primary" onClick={exporteer} disabled={bezig} icon={bezig && !kandidaat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}>
+              Back-up downloaden
+            </Button>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button variant="secondary" icon={<Upload className="h-4 w-4" />} onClick={() => bestand.current?.click()}>
+              Back-up terugzetten…
+            </Button>
+            <p className="text-[0.78rem] leading-snug text-ink-muted">Een .json-bestand van Slimmer Wonen. Je ziet eerst wat erin zit. API-sleutels gaan nooit mee in een back-up.</p>
+            <input ref={bestand} type="file" accept="application/json,.json" className="hidden" onChange={(e) => kies(e.target.files)} aria-label="Back-upbestand kiezen" />
+          </div>
+          {fout && (
+            <p className="mt-3 text-sm text-rust" role="alert">
+              {fout}
+            </p>
+          )}
+
+          <div className="mt-5 flex gap-3 border-t border-sand-200 pt-4 text-[0.82rem] text-ink-soft">
+            <CloudOff className="mt-0.5 h-4.5 w-4.5 shrink-0 text-ink-muted" />
+            <p>
+              <span className="font-semibold text-ink">Synchroniseren tussen apparaten</span> <Badge tone="gold">Binnenkort</Badge>
+              <br />
+              Automatische cloud-sync is nog niet beschikbaar. Tot die tijd neem je je gegevens mee met een back-upbestand (bijv. via e-mail of je eigen cloudopslag).
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Dialog
+        open={!!kandidaat}
+        onClose={() => !bezig && setKandidaat(null)}
+        title="Back-up terugzetten"
+        sub={kandidaat?.gemaakt ? `Gemaakt op ${datumTijd(Date.parse(kandidaat.gemaakt))}` : undefined}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setKandidaat(null)} disabled={bezig}>
+              Annuleren
+            </Button>
+            <Button variant={modus === 'vervangen' ? 'primary' : 'gold'} onClick={zetTerug} disabled={bezig} icon={bezig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}>
+              {modus === 'vervangen' ? 'Alles vervangen' : 'Samenvoegen'}
+            </Button>
+          </>
+        }
+      >
+        {s && (
+          <>
+            <ul className="grid grid-cols-2 gap-2 text-[0.85rem]">
+              <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.projecten}</span> projecten ({s.eigen} eigen)</li>
+              <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.fotos}</span> foto's</li>
+              <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200"><span className="tabnum font-semibold text-ink">{s.prijzen}</span> eigen prijzen</li>
+              <li className="rounded-xl bg-sand-50 px-3 py-2 ring-1 ring-sand-200">{s.bedrijf ? 'Met bedrijfsgegevens' : 'Geen bedrijfsgegevens'}</li>
+            </ul>
+            <fieldset className="mt-5 space-y-2">
+              <legend className="mb-2 text-[0.8rem] font-medium text-ink-soft">Hoe terugzetten?</legend>
+              {(
+                [
+                  ['samenvoegen', 'Samenvoegen (aanbevolen)', 'Projecten uit het bestand worden toegevoegd; bij hetzelfde project wint het bestand. Je huidige andere projecten blijven staan.'],
+                  ['vervangen', 'Alles vervangen', 'Alle huidige projecten, foto’s en eigen prijzen op dit apparaat worden vervangen door de back-up.'],
+                ] as const
+              ).map(([k, t, uitleg]) => (
+                <label key={k} className={`flex cursor-pointer gap-3 rounded-xl p-3.5 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold-300 ${modus === k ? 'bg-gold-100/50 ring-2 ring-gold-500' : 'ring-1 ring-sand-300'}`}>
+                  <input type="radio" name="import-modus" checked={modus === k} onChange={() => setModus(k)} className="mt-1 accent-[#a8843f] focus-visible:outline-none" />
+                  <span>
+                    <span className="block text-[0.9rem] font-semibold text-ink">{t}</span>
+                    <span className="block text-[0.8rem] leading-snug text-ink-muted">{uitleg}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {modus === 'vervangen' && eigen > 0 && (
+              <p className="mt-3 rounded-xl border border-rust/25 bg-rust/5 px-3.5 py-2.5 text-[0.82rem] text-ink-soft">
+                Let op: je hebt nu {eigen} eigen project{eigen === 1 ? '' : 'en'} op dit apparaat. Maak eerst een back-up als je die wilt bewaren.
+              </p>
+            )}
+          </>
+        )}
+      </Dialog>
     </Sectie>
   )
 }

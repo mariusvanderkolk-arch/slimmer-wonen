@@ -1,6 +1,8 @@
 import { ArrowRight, Calculator, Camera, ChevronRight, ClipboardList, FolderOpen, MapPin, Plus, ShoppingCart } from 'lucide-react'
 import { Plattegrond } from '../components/Plattegrond'
-import { Badge, Button, Eyebrow } from '../components/ui'
+import { Badge, Button, Eyebrow, Notice } from '../components/ui'
+import { backupHerinnering } from '../lib/backup'
+import { backupStatus } from '../lib/backupActies'
 import { euro, getal, kortDatum } from '../lib/format'
 import { ga } from '../lib/router'
 import { useProjecten } from '../lib/store'
@@ -24,6 +26,8 @@ const heroAfm = { ...standaardAfmetingen(), lengte: 2.8, breedte: 2.2, openingen
 export function Home() {
   const projecten = useProjecten()
   const gesorteerd = [...projecten].sort((a, b) => b.updatedAt - a.updatedAt)
+  const bk = backupStatus.use()
+  const herinner = backupHerinnering({ projecten, laatsteBackup: bk.laatste, gesnoozed: bk.later })
   return (
     <div className="bg-grain">
       <div className="mx-auto max-w-6xl px-4 pt-6 pb-16 sm:px-6 sm:pt-10">
@@ -85,6 +89,24 @@ export function Home() {
             </div>
             {projecten.length > 0 && <p className="pb-1 text-sm text-ink-muted">{projecten.length} {projecten.length === 1 ? 'project' : 'projecten'}</p>}
           </div>
+          {herinner && (
+            <Notice
+              className="mb-5"
+              title={bk.laatste ? 'Tijd voor een nieuwe back-up' : 'Maak een back-up van je projecten'}
+              action={
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => backupStatus.set({ ...bk, later: Date.now() + 7 * 24 * 3600e3 })}>
+                    Later
+                  </Button>
+                  <Button size="sm" variant="primary" onClick={() => ga('/instellingen/backup')}>
+                    Back-up maken
+                  </Button>
+                </div>
+              }
+            >
+              Je projecten staan alleen in deze browser. Met een back-upbestand raak je niets kwijt als je browsergegevens wist of van toestel wisselt.
+            </Notice>
+          )}
           {gesorteerd.length === 0 ? (
             <LeegOverzicht />
           ) : (

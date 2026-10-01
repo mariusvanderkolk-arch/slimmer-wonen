@@ -25,6 +25,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 export const bewaarFoto = (id: string, blob: Blob) => tx('readwrite', (s) => s.put(blob, id))
 export const haalFoto = (id: string) => tx<Blob | undefined>('readonly', (s) => s.get(id))
 export const verwijderFoto = (id: string) => tx('readwrite', (s) => s.delete(id))
+export const alleFotoIds = () => tx<IDBValidKey[]>('readonly', (s) => s.getAllKeys()).then((k) => k.map(String))
 
 /** Verkleint een foto naar max. 1600 px (JPEG) zodat hij netjes lokaal past. */
 export async function verkleinFoto(file: File, max = 1600): Promise<Blob> {
