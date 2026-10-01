@@ -1,4 +1,4 @@
-import { Calculator, Camera, Database, RotateCcw, ShoppingCart } from 'lucide-react'
+import { Calculator, Camera, Database, RotateCcw, ScanLine, ShoppingCart } from 'lucide-react'
 import { LogoMark } from '../components/Logo'
 import { Badge, Button, Card, PageTitle } from '../components/ui'
 import { toast } from '../components/Toast'
@@ -36,6 +36,13 @@ const BLOKKEN = [
     ),
     tekst:
       "Foto's maken en bewaren werkt altijd (verkleind, alleen op dit apparaat). Met een eigen API-sleutel (gratis te proberen met Google Gemini, of betaald bij OpenAI/xAI) kan een AI-model je foto's beoordelen: elementen herkennen, werkzaamheden voorstellen en maten schatten. Dat zijn suggesties die je zelf overneemt; maten die de AI schat zijn grof, dus meet altijd na. Foto's gaan alleen naar die dienst als jij op Analyseer drukt.",
+  },
+  {
+    icon: ScanLine,
+    titel: 'Meten met AR',
+    badge: <Badge tone="gold">Beta</Badge>,
+    tekst:
+      'Bij Opmeten kun je met de knop AR een afstand meten door twee punten aan te tikken (WebXR). Dit werkt alleen op toestellen die AR in de browser ondersteunen, zoals Android-telefoons met Chrome en ARCore; Safari op iPhone ondersteunt het nog niet. AR-metingen wijken vaak een paar centimeter af: meet belangrijke maten na.',
   },
   {
     icon: Database,

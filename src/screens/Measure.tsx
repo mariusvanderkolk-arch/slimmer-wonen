@@ -1,9 +1,11 @@
-import { lazy, Suspense, type ReactNode } from 'react'
-import { AppWindow, CookingPot, DoorOpen, Layers, LayoutGrid, Plus, Ruler, Settings2, ShowerHead, Trash2 } from 'lucide-react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { AppWindow, ScanLine, CookingPot, DoorOpen, Layers, LayoutGrid, Plus, Ruler, Settings2, ShowerHead, Trash2 } from 'lucide-react'
 import { Fotos } from '../components/Fotos'
 
 const AiAnalyse = lazy(() => import('../components/AiAnalyse'))
+const ArMeten = lazy(() => import('../components/ArMeten'))
 import { Plattegrond } from '../components/Plattegrond'
+import { toast } from '../components/Toast'
 import { Button, Card, CardHeader, NumberField } from '../components/ui'
 import { LEGVLOER_PAK, uid } from '../lib/defaults'
 import { effectieveScope } from '../lib/calc'
@@ -69,6 +71,7 @@ export function Measure({ p }: { p: Project }) {
       legvloer: k === 'tegel' ? x.legvloer : { soort: k, m2PerPak: x.legvloer.soort === k ? x.legvloer.m2PerPak : LEGVLOER_PAK[k] },
     }))
   const toonTegelhoogte = s.wandtegels && (type === 'badkamer' || type === 'toilet')
+  const [ar, setAr] = useState<'dicht' | 'open' | null>(null)
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -83,7 +86,26 @@ export function Measure({ p }: { p: Project }) {
             icon={<Ruler className="h-5 w-5" />}
             title="Afmetingen ruimte"
             sub={type === 'vloer' ? 'Binnenmaten van de vloer in meters, van wand tot wand.' : 'Binnenmaten in meters, gemeten van wand tot wand.'}
+            action={
+              <Button size="sm" variant="secondary" icon={<ScanLine className="h-4 w-4" />} onClick={() => setAr('open')} title="Meten met de camera via WebXR (beta)">
+                AR <span className="text-[0.65rem] font-semibold tracking-wide text-gold-700 uppercase">beta</span>
+              </Button>
+            }
           />
+          {ar && (
+            <Suspense fallback={null}>
+              <ArMeten
+                open={ar === 'open'}
+                onClose={() => setAr('dicht')}
+                onGebruik={(veld, v) => {
+                  if (veld === 'hoogte') setA({ hoogte: v, tegelhoogte: tegelhoogteVol ? v : Math.min(a.tegelhoogte, v) })
+                  else setA({ [veld]: v })
+                  setAr('dicht')
+                  toast(`${veld[0].toUpperCase() + veld.slice(1)} ingevuld: ${getal(v)} m`)
+                }}
+              />
+            </Suspense>
+          )}
           <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 sm:p-6">
             <NumberField label="Lengte" unit="m" value={a.lengte} onChange={(v) => setA({ lengte: v })} />
             <NumberField label="Breedte" unit="m" value={a.breedte} onChange={(v) => setA({ breedte: v })} />
