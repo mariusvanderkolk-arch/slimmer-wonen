@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Calculator, Camera, FileText, MapPin, Pencil, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Calculator, CalendarDays, Camera, FileText, MapPin, Pencil, ShoppingCart } from 'lucide-react'
 import { Badge, Button } from '../components/ui'
 import { ga, type Stap } from '../lib/router'
 import { useProject } from '../lib/store'
@@ -8,12 +8,14 @@ import { Measure } from './Measure'
 import { Calculation } from './Calculation'
 import { Shopping } from './Shopping'
 import { Quote } from './Quote'
+import { PlanningScherm } from './Planning'
 
 export const STAPPEN: { id: Stap; label: string; kort: string; icon: typeof Camera }[] = [
   { id: 'opmeten', label: 'Opmeten', kort: 'Opmeten', icon: Camera },
   { id: 'berekening', label: 'Berekening', kort: 'Bereken', icon: Calculator },
   { id: 'inkoop', label: 'Inkooplijst', kort: 'Inkoop', icon: ShoppingCart },
   { id: 'offerte', label: 'Offerte', kort: 'Offerte', icon: FileText },
+  { id: 'planning', label: 'Planning & uren', kort: 'Planning', icon: CalendarDays },
 ]
 
 export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
@@ -53,7 +55,7 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
             )}
           </p>
           <nav className="-mx-2 mt-6 sm:mx-0" aria-label="Stappen">
-            <ol className="grid grid-cols-4 sm:flex sm:gap-2">
+            <ol className="grid grid-cols-5 sm:flex sm:gap-2">
               {STAPPEN.map((s, i) => {
                 const actief = s.id === stap
                 const klaar = i < index
@@ -62,7 +64,7 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
                     <a
                       href={`#/project/${p.id}/${s.id}`}
                       aria-current={actief ? 'step' : undefined}
-                      className={`relative flex items-center justify-center gap-1.5 px-1 pt-2 pb-3.5 text-[0.8rem] font-medium transition sm:justify-start sm:gap-2 sm:px-3.5 sm:text-sm ${
+                      className={`relative flex flex-col items-center justify-center gap-1 px-0.5 pt-2 pb-3 text-[0.72rem] font-medium transition sm:flex-row sm:justify-start sm:gap-2 sm:px-3.5 sm:pb-3.5 sm:text-sm ${
                         actief ? 'text-ink' : 'text-ink-muted hover:text-ink'
                       }`}
                     >
@@ -94,6 +96,7 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
         {stap === 'berekening' && <Calculation p={p} />}
         {stap === 'inkoop' && <Shopping p={p} />}
         {stap === 'offerte' && <Quote p={p} />}
+        {stap === 'planning' && <PlanningScherm p={p} />}
       </div>
 
       <div className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-sand-300/70 bg-sand-100/90 backdrop-blur-md">
@@ -104,7 +107,7 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
               <span className="sm:hidden">Terug</span>
             </Button>
           ) : (
-            <span className="hidden text-sm text-ink-muted sm:block">Stap 1 van 4 · wijzigingen worden automatisch bewaard</span>
+            <span className="hidden text-sm text-ink-muted sm:block">Stap 1 van 5 · wijzigingen worden automatisch bewaard</span>
           )}
           {volgende ? (
             <Button className={vorige ? '' : 'w-full sm:w-auto'} onClick={() => ga(`/project/${p.id}/${volgende.id}`)}>

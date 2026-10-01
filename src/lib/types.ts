@@ -76,6 +76,43 @@ export interface PhotoRef {
   createdAt: number
 }
 
+/** Geregistreerde uren op een dag. */
+export interface UrenLog {
+  id: string
+  /** YYYY-MM-DD */
+  datum: string
+  /** werkzaamheid (scope-sleutel) of leeg voor algemeen */
+  taak?: string
+  uren: number
+  omschrijving: string
+}
+
+export type KostSoort = 'materiaal' | 'meerwerk' | 'overig'
+
+/** Werkelijke uitgave: bonnetje materiaal, meerwerk of overige kosten (incl. btw). */
+export interface ExtraKost {
+  id: string
+  datum: string
+  omschrijving: string
+  soort: KostSoort
+  bedrag: number
+}
+
+export interface Planning {
+  /** startdatum YYYY-MM-DD */
+  start?: string
+  /** werkuren per dag */
+  dagUren: number
+  /** ook op zaterdag en zondag werken */
+  weekend: boolean
+  /** aangepaste werkdagen per taak (scope-sleutel) */
+  dagen: Record<string, number>
+  /** aangepaste droog-/wachttijd in dagen per taak */
+  droogdagen: Record<string, number>
+  logs: UrenLog[]
+  kosten: ExtraKost[]
+}
+
 export interface Project {
   id: string
   naam: string
@@ -101,4 +138,5 @@ export interface Project {
   voorbeeld?: boolean
   /** vaste sleutel van een voorbeeldproject (om nieuwe voorbeelden één keer toe te voegen) */
   voorbeeldId?: string
+  planning?: Planning
 }

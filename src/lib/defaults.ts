@@ -55,6 +55,11 @@ export function nieuwProject(velden: Partial<Project> = {}): Project {
 }
 
 /** Voorbeeldprojecten, zodat de demo meteen iets laat zien. */
+const iso = (t: number) => {
+  const d = new Date(t)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function voorbeeldProjecten(): Project[] {
   const dag = 86_400_000
   const nu = Date.now()
@@ -85,6 +90,22 @@ export function voorbeeldProjecten(): Project[] {
       vloertegel: { lengte: 60, breedte: 60, m2PerDoos: 1.44, dikte: 10, voeg: 3 },
       afgevinkt: { tegellijm: true, primer: true },
       notities: 'Klant wil matte, lichte tegels. Afvoer toilet verplaatsen richting raamzijde.',
+      planning: {
+        start: iso(nu - 4 * dag),
+        dagUren: 8,
+        weekend: false,
+        dagen: {},
+        droogdagen: {},
+        logs: [
+          { id: uid(), datum: iso(nu - 4 * dag), taak: 'sloopwerk', uren: 8, omschrijving: 'Tegels en sanitair eruit' },
+          { id: uid(), datum: iso(nu - 3 * dag), taak: 'sloopwerk', uren: 3.5, omschrijving: 'Afvoer puin' },
+          { id: uid(), datum: iso(nu - 3 * dag), taak: 'egaliseren', uren: 4, omschrijving: '' },
+        ],
+        kosten: [
+          { id: uid(), datum: iso(nu - 5 * dag), omschrijving: 'Bon Hornbach: lijm, primer, egaliseer', soort: 'materiaal', bedrag: 268.4 },
+          { id: uid(), datum: iso(nu - 3 * dag), omschrijving: 'Afvoer toilet verplaatsen', soort: 'meerwerk', bedrag: 145 },
+        ],
+      },
     }),
     nieuwProject({
       voorbeeldId: 'douche-de-vries',
