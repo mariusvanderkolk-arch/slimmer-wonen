@@ -1,210 +1,123 @@
-import { useState } from 'react'
-import { Copy, Printer } from 'lucide-react'
-import { LogoMark } from '../components/Logo'
-import { Button, Card, NumberField } from '../components/ui'
+import { useEffect, useMemo } from 'react'
+import { BadgeCheck, Building2, Copy, ExternalLink, Printer, Send } from 'lucide-react'
+import { OfferteDocument } from '../components/OfferteDocument'
+import { Badge, Button, Card, Notice, NumberField, Switch, TextField } from '../components/ui'
 import { toast } from '../components/Toast'
-import { effectieveScope } from '../lib/calc'
-import { ruimteLabel, scopeItems } from '../lib/ruimtes'
-import { datum, euro, getal } from '../lib/format'
-import { winkelNaam } from '../lib/prices'
+import { nieuwOffertenummer, useBedrijf } from '../lib/bedrijf'
+import { datum, kortDatum } from '../lib/format'
+import { offerteLink } from '../lib/offerte'
+import { maakOfferteData } from '../lib/offerteMaken'
+import { vandaag } from '../lib/planning'
+import { ga } from '../lib/router'
 import { inkoopTekst, kopieer } from '../lib/share'
 import { projectStore } from '../lib/store'
 import { useBerekening } from '../lib/useCalc'
-import type { Project } from '../lib/types'
+import type { OfferteStatus, Project } from '../lib/types'
+
+const datumIso = (iso: string) => datum(Date.parse(`${iso}T12:00:00`))
 
 export function Quote({ p }: { p: Project }) {
-  const { oppervlakken: o, inkoop, arbeid, uren, arbeidKosten } = useBerekening(p)
-  const [metArbeid, setMetArbeid] = useState(true)
-  const nummer = `SW-${new Date(p.createdAt).getFullYear()}-${p.id.replace(/-/g, '').slice(0, 4).toUpperCase()}`
-  const totaal = inkoop.goedkoopsteMix + (metArbeid ? arbeidKosten : 0)
-  const sc = effectieveScope(p)
-  const werk = scopeItems(p.type).filter((i) => sc[i.key])
-  const st = inkoop.prijsStatus
-  const gemengd = st.eigen > 0 && st.voorbeeld > 0
-  const prijsTekst =
-    st.eigen === 0
-      ? 'Materiaalprijzen zijn richtprijzen (voorbeeld) en geen actuele winkelprijzen.'
-      : st.voorbeeld === 0
-        ? `Materiaalprijzen zijn eigen prijzen, bijgewerkt op ${st.laatstBijgewerkt ? datum(Date.parse(st.laatstBijgewerkt)) : '—'}.`
-        : `Materiaalprijzen zijn deels eigen prijzen; bedragen met * zijn voorbeeldprijzen (${st.voorbeeld} van ${st.eigen + st.voorbeeld} prijzen).`
+  const berekening = useBerekening(p)
+  const bedrijf = useBedrijf()
+  const of = p.offerte ?? {}
+  const metArbeid = of.metArbeid ?? true
+  const setOfferte = (patch: Partial<OfferteStatus>) => projectStore.werkBij(p.id, (x) => ({ ...x, offerte: { ...x.offerte, ...patch } }))
+
+  // Eén keer een offertenummer en -datum toekennen.
+  useEffect(() => {
+    const actueel = projectStore.alle().find((x) => x.id === p.id)
+    if (actueel && !actueel.offerte?.nummer) setOfferte({ nummer: nieuwOffertenummer(), datum: actueel.offerte?.datum ?? vandaag() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id])
+
+  const data = useMemo(() => maakOfferteData(p, berekening, bedrijf, datumIso), [p, berekening, bedrijf])
+
+  const deel = async () => {
+    const url = offerteLink(data)
+    setOfferte({ gedeeldOp: Date.now() })
+    const titel = `Offerte ${data.nr}${data.bedrijf.naam ? ` – ${data.bedrijf.naam}` : ''}`
+    const tekst = `Beste ${p.klant || 'klant'}, hierbij de offerte voor ${p.naam}. Je kunt hem bekijken en akkoord geven via deze link:`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: titel, text: tekst, url })
+        toast('Offerte-link gedeeld')
+        return
+      } catch (e) {
+        if ((e as DOMException)?.name === 'AbortError') return
+      }
+    }
+    toast((await kopieer(url)) === 'gekopieerd' ? 'Offerte-link gekopieerd' : 'Kopiëren mislukt', 'ok')
+  }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-      <article className="card print-plain order-2 overflow-hidden lg:order-1">
-        <div className="px-6 pt-8 pb-6 sm:px-10 sm:pt-10">
-          <header className="flex flex-wrap items-start justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <LogoMark className="h-12 w-12" />
-              <div className="leading-none">
-                <p className="font-display text-[1.7rem] font-semibold">
-                  Slimmer <span className="text-gold-600">Wonen</span>
-                </p>
-                <p className="mt-1 text-[0.62rem] font-medium uppercase tracking-[0.22em] text-ink-muted">Renovatie · Calculatie</p>
-              </div>
-            </div>
-            <div className="text-left sm:text-right">
-              <p className="font-display text-[2rem] leading-none font-semibold">Offerte</p>
-              <p className="mt-1.5 text-xs text-ink-muted">indicatieve raming</p>
-              <dl className="mt-3 grid grid-cols-[auto_auto] gap-x-4 gap-y-0.5 text-[0.8rem] sm:justify-end">
-                <dt className="text-ink-muted">Nummer</dt>
-                <dd className="tabnum font-medium">{nummer}</dd>
-                <dt className="text-ink-muted">Datum</dt>
-                <dd className="font-medium">{datum(Date.now())}</dd>
-              </dl>
-            </div>
-          </header>
-
-          <div className="gold-rule my-7" />
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-gold-700">Opdrachtgever</p>
-              <p className="mt-1.5 font-semibold">{p.klant || '—'}</p>
-              {p.adres && <p className="text-sm text-ink-soft">{p.adres}</p>}
-            </div>
-            <div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-gold-700">Project</p>
-              <p className="mt-1.5 font-semibold">{p.naam}</p>
-              <p className="text-sm text-ink-soft">
-                {ruimteLabel(p.type)} · {getal(p.afmetingen.lengte)} × {getal(p.afmetingen.breedte)} × {getal(p.afmetingen.hoogte)} m
-              </p>
-            </div>
-          </div>
-
-          <section className="avoid-break mt-8">
-            <h3 className="font-display text-[1.35rem] font-semibold">Werkzaamheden</h3>
-            <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-sm text-ink-soft sm:grid-cols-2">
-              {werk.map((w) => (
-                <li key={w.key} className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold-400" />
-                  <span>
-                    <span className="font-medium text-ink">{w.label}</span> — {w.omschrijving.toLowerCase()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="avoid-break mt-8">
-            <h3 className="font-display text-[1.35rem] font-semibold">Oppervlakken</h3>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(p.type === 'vloer'
-                ? [['Vloer', o.vloer, 'm²'], ['Plinten', sc.plinten ? o.plintLengte : 0, 'm'], ['Omtrek', o.omtrek, 'm'], ['Snijverlies', p.snijverlies, '%']]
-                : p.type === 'keuken'
-                  ? [['Spatwand', o.spatwand, 'm²'], ['Vloer', o.vloer, 'm²'], ['Werkblad', p.afmetingen.spatwand.lengte, 'm'], ['Snijverlies', p.snijverlies, '%']]
-                  : [
-                      ['Wandtegels', o.wandNetto, 'm²'],
-                      ['Vloer', o.vloer, 'm²'],
-                      p.type === 'toilet' ? ['Tegelhoogte', o.tegelhoogte, 'm'] : ['Waterdicht', sc.waterdicht ? o.waterdichtOppervlak : 0, 'm²'],
-                      ['Stucwerk', sc.stucwerk ? o.plafond + o.wandBovenTegels : 0, 'm²'],
-                    ]
-              ).map(([k, v, e]) => (
-                <div key={k as string} className="rounded-xl bg-sand-50 px-3.5 py-3 ring-1 ring-sand-200">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">{k}</p>
-                  <p className="tabnum mt-0.5 font-semibold">{getal(v as number)} {e}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-8">
-            <h3 className="font-display text-[1.35rem] font-semibold">Materialen</h3>
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[480px] text-sm">
-                <thead>
-                  <tr className="border-b border-sand-300 text-left text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">
-                    <th className="py-2 pr-3 font-semibold">Omschrijving</th>
-                    <th className="py-2 pr-3 text-right font-semibold">Aantal</th>
-                    <th className="py-2 pr-3 font-semibold">Winkel</th>
-                    <th className="py-2 text-right font-semibold">Bedrag</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inkoop.regels.map((r) => (
-                    <tr key={r.sleutel} className="avoid-break border-b border-sand-200">
-                      <td className="py-2 pr-3">
-                        <span className="font-medium text-ink">{r.naam}</span>
-                        {r.spec && <span className="text-ink-muted"> · {r.spec}</span>}
-                      </td>
-                      <td className="tabnum py-2 pr-3 text-right whitespace-nowrap">
-                        {r.goedkoopste?.aantal ?? r.aantal}{' '}
-                        <span className="text-ink-muted">× {(r.goedkoopste?.verpakking ?? r.verpakking).replace(/^(doos|zak|bus|emmer|rol|koker|lengte|plaat) à /, '$1 ')}</span>
-                      </td>
-                      <td className="py-2 pr-3 text-ink-soft">{r.goedkoopste ? winkelNaam(r.goedkoopste.winkel) : '—'}</td>
-                      <td className="tabnum py-2 text-right whitespace-nowrap">
-                        {r.goedkoopste ? euro(r.goedkoopste.totaal) : '—'}
-                        {gemengd && r.goedkoopste?.bron === 'voorbeeld' && <span className="text-gold-600">*</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} className="pt-3 pr-3 text-right font-medium text-ink-soft">Subtotaal materialen</td>
-                    <td className="tabnum pt-3 text-right font-semibold">{euro(inkoop.goedkoopsteMix)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </section>
-
-          {metArbeid && arbeid.length > 0 && (
-            <section className="avoid-break mt-8">
-              <h3 className="font-display text-[1.35rem] font-semibold">Arbeid</h3>
-              <table className="mt-2 w-full text-sm">
-                <tbody>
-                  {arbeid.map((a) => (
-                    <tr key={a.scope} className="border-b border-sand-200">
-                      <td className="py-2 pr-3 text-ink">{a.omschrijving}</td>
-                      <td className="tabnum py-2 text-right whitespace-nowrap text-ink-soft">{getal(a.uren, 1)} uur</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td className="pt-3 pr-3 text-right font-medium text-ink-soft">
-                      {getal(uren, 1)} uur × {euro(p.uurtarief)}
-                    </td>
-                    <td className="tabnum pt-3 text-right font-semibold">{euro(arbeidKosten)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </section>
-          )}
-
-          <section className="avoid-break mt-8 rounded-2xl bg-ink px-6 py-5 text-sand-50">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-gold-300">Totaal indicatief</p>
-                <p className="mt-1 text-xs text-sand-300">
-                  Materialen{metArbeid ? ' + arbeid' : ''} · incl. 21% btw
-                </p>
-              </div>
-              <p className="tabnum font-display text-[2.3rem] leading-none font-semibold">{euro(totaal)}</p>
-            </div>
-          </section>
-
-          <p className="mt-6 text-[0.72rem] leading-relaxed text-ink-muted">
-            Deze raming is indicatief en gebaseerd op opgegeven maten en vuistregels. {prijsTekst} Arbeidsuren zijn een
-            schatting. Aan deze raming kunnen geen rechten worden ontleend; een definitieve offerte volgt na inspectie ter plaatse.
-          </p>
-          {p.notities && (
-            <div className="avoid-break mt-5 rounded-xl border border-sand-200 px-4 py-3 text-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-gold-700">Notities</p>
-              <p className="mt-1 text-ink-soft">{p.notities}</p>
-            </div>
-          )}
-        </div>
-      </article>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div className="order-2 lg:order-1">
+        <OfferteDocument d={data} logo={bedrijf.logo} />
+      </div>
 
       <aside className="no-print order-1 space-y-4 lg:sticky lg:top-24 lg:order-2">
+        {!bedrijf.naam && (
+          <Notice
+            title="Zet je eigen bedrijf op de offerte"
+            action={
+              <Button size="sm" variant="secondary" icon={<Building2 className="h-4 w-4" />} onClick={() => ga('/instellingen')}>
+                Bedrijfsgegevens
+              </Button>
+            }
+          >
+            Logo, KvK, btw-nummer, IBAN en contactgegevens.
+          </Notice>
+        )}
+
         <Card className="p-5">
-          <p className="text-[0.98rem] font-semibold">Offerte instellingen</p>
-          <p className="mt-0.5 text-[0.82rem] text-ink-muted">Druk af of bewaar als PDF via je browser.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.98rem] font-semibold">Delen met de klant</p>
+              <p className="mt-0.5 text-[0.82rem] leading-snug text-ink-muted">De klant bekijkt de offerte via een link en kan akkoord geven.</p>
+            </div>
+            {of.akkoord && (
+              <Badge tone="sage">
+                <BadgeCheck className="h-3.5 w-3.5" /> Akkoord
+              </Badge>
+            )}
+          </div>
+          <div className="mt-4 grid gap-2">
+            <Button icon={<Send className="h-4 w-4" />} onClick={deel}>
+              Deel offerte-link
+            </Button>
+            <Button variant="secondary" icon={<ExternalLink className="h-4 w-4" />} onClick={() => window.open(offerteLink(data), '_blank', 'noopener')}>
+              Bekijk als klant
+            </Button>
+          </div>
+          <p className="mt-3 text-[0.76rem] leading-relaxed text-ink-muted">
+            Er is geen server: de offerte zit in de link zelf. Iedereen met de link kan hem lezen. Pas je iets aan, deel dan een nieuwe link.
+            {of.gedeeldOp ? ` Laatst gedeeld op ${kortDatum(of.gedeeldOp)}.` : ''}
+          </p>
+          <div className="mt-4 rounded-xl bg-sand-50 px-3.5 py-3 ring-1 ring-sand-200">
+            <label className="flex items-center justify-between gap-3 text-sm font-medium">
+              Akkoord ontvangen
+              <Switch
+                checked={Boolean(of.akkoord)}
+                label="Akkoord van de klant ontvangen"
+                onChange={(v) => setOfferte({ akkoord: v ? { naam: p.klant, datum: vandaag() } : undefined })}
+              />
+            </label>
+            <p className="mt-1 text-[0.74rem] leading-snug text-ink-muted">
+              {of.akkoord ? `Vastgelegd op ${datumIso(of.akkoord.datum)}.` : 'Zet aan zodra je het akkoordbericht van de klant hebt ontvangen.'}
+            </p>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-[0.98rem] font-semibold">Offerte-instellingen</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <TextField label="Offertenummer" value={of.nummer ?? ''} onChange={(v) => setOfferte({ nummer: v })} />
+            </div>
+          </div>
           <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-sand-50 px-3.5 py-3 ring-1 ring-sand-200">
             <span className="text-sm font-medium">Arbeid meenemen</span>
-            <input type="checkbox" checked={metArbeid} onChange={(e) => setMetArbeid(e.target.checked)} className="peer sr-only" />
-            <span className="relative h-6 w-11 rounded-full bg-sand-300 transition peer-checked:bg-gold-500 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5" />
+            <Switch checked={metArbeid} onChange={(v) => setOfferte({ metArbeid: v })} label="Arbeid meenemen" />
           </label>
           {metArbeid && (
             <div className="mt-3">
@@ -221,14 +134,21 @@ export function Quote({ p }: { p: Project }) {
               placeholder="Bijv. afspraken of uitgangspunten"
             />
           </label>
+          <p className="mt-2 text-[0.74rem] text-ink-muted">
+            Geldigheid ({bedrijf.geldigheidDagen} dagen) en betaaltermijn stel je in bij{' '}
+            <a href="#/instellingen" className="font-medium text-gold-700 underline-offset-2 hover:underline">
+              Instellingen
+            </a>
+            .
+          </p>
           <div className="mt-4 grid gap-2">
-            <Button icon={<Printer className="h-4 w-4" />} onClick={() => window.print()}>
+            <Button variant="secondary" icon={<Printer className="h-4 w-4" />} onClick={() => window.print()}>
               Afdrukken / PDF
             </Button>
             <Button
-              variant="secondary"
+              variant="ghost"
               icon={<Copy className="h-4 w-4" />}
-              onClick={async () => toast((await kopieer(inkoopTekst(p, inkoop))) === 'gekopieerd' ? 'Materiaallijst gekopieerd' : 'Kopiëren mislukt')}
+              onClick={async () => toast((await kopieer(inkoopTekst(p, berekening.inkoop))) === 'gekopieerd' ? 'Materiaallijst gekopieerd' : 'Kopiëren mislukt')}
             >
               Kopieer materiaallijst
             </Button>

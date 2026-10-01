@@ -93,30 +93,49 @@ export function TextField({
   onChange,
   placeholder,
   hint,
+  fout,
   autoFocus,
+  type = 'text',
+  inputMode,
+  autoComplete,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   hint?: string
+  /** foutmelding (vervangt de hint) */
+  fout?: string | null
   autoFocus?: boolean
+  type?: 'text' | 'email' | 'tel' | 'url' | 'password'
+  inputMode?: 'text' | 'email' | 'tel' | 'url' | 'numeric'
+  autoComplete?: string
 }) {
   const id = useId()
+  const hintId = `${id}-hint`
   return (
-    <div>
+    <div className="min-w-0">
       <label htmlFor={id} className="mb-1.5 block text-[0.8rem] font-medium text-ink-soft">
         {label}
       </label>
       <input
         id={id}
-        className={`${inputBase} h-12`}
+        type={type}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
+        className={`${inputBase} h-12 ${fout ? '!border-rust/60 focus:!ring-rust/15' : ''}`}
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        aria-invalid={fout ? true : undefined}
+        aria-describedby={fout || hint ? hintId : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
-      {hint && <p className="mt-1.5 text-xs text-ink-muted">{hint}</p>}
+      {(fout || hint) && (
+        <p id={hintId} className={`mt-1.5 text-xs ${fout ? 'text-rust' : 'text-ink-muted'}`}>
+          {fout || hint}
+        </p>
+      )}
     </div>
   )
 }

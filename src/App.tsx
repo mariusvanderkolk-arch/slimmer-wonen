@@ -6,9 +6,18 @@ import { ProjectScreen } from './screens/ProjectScreen'
 import { About } from './screens/About'
 import { Prices } from './screens/Prices'
 import { Toaster } from './components/Toast'
+import { KlantOfferte } from './screens/KlantOfferte'
+import { Instellingen } from './screens/Instellingen'
 
 export default function App() {
   const route = useRoute()
+  if (route.naam === 'offerte-bekijken')
+    return (
+      <>
+        <KlantOfferte code={route.data} />
+        <Toaster />
+      </>
+    )
   return (
     <Shell route={route}>
       {route.naam === 'home' && <Home />}
@@ -17,6 +26,7 @@ export default function App() {
       {route.naam === 'project' && <ProjectScreen id={route.id} stap={route.stap} />}
       {route.naam === 'over' && <About />}
       {route.naam === 'prijzen' && <Prices terugNaar={route.terugNaar} />}
+      {route.naam === 'instellingen' && <Instellingen sectie={route.sectie} />}
       <Toaster />
     </Shell>
   )

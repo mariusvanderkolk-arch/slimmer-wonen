@@ -113,6 +113,18 @@ export interface Planning {
   kosten: ExtraKost[]
 }
 
+/** Offertegegevens die bij het project bewaard blijven. */
+export interface OfferteStatus {
+  nummer?: string
+  /** offertedatum YYYY-MM-DD */
+  datum?: string
+  metArbeid?: boolean
+  /** laatst gedeeld (ms) */
+  gedeeldOp?: number
+  /** handmatig vastgelegd akkoord van de klant */
+  akkoord?: { naam: string; datum: string }
+}
+
 export interface Project {
   id: string
   naam: string
@@ -139,4 +151,5 @@ export interface Project {
   /** vaste sleutel van een voorbeeldproject (om nieuwe voorbeelden één keer toe te voegen) */
   voorbeeldId?: string
   planning?: Planning
+  offerte?: OfferteStatus
 }
