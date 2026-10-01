@@ -1,5 +1,6 @@
-import { Calculator, ChevronDown, Ruler } from 'lucide-react'
-import { Card, CardHeader, Stat } from '../components/ui'
+import { Calculator, ChevronDown, Ruler, ListChecks } from 'lucide-react'
+import { Card, CardHeader, Stat, LeegStaat, Button } from '../components/ui'
+import { ga } from '../lib/router'
 import { GROEP_ICONS } from '../components/groepIcons'
 import { GROEPEN, REGELS, effectieveScope } from '../lib/calc'
 import { getal } from '../lib/format'
@@ -89,16 +90,25 @@ export function Calculation({ p }: { p: Project }) {
         <Card>
           <CardHeader icon={<Calculator className="h-5 w-5" />} title="Benodigde materialen" sub="Inclusief snijverlies, afgerond op hele verpakkingen" />
           {groepen.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-ink-muted">Geen materialen: kies werkzaamheden en vul de maten in.</p>
+            <LeegStaat
+              icon={<Calculator className="h-5 w-5" />}
+              titel="Nog niets te berekenen"
+              tekst="Kies eerst welke werkzaamheden je doet en vul bij Opmeten de maten in. Dan verschijnen hier alle materialen."
+              actie={
+                <Button variant="secondary" icon={<ListChecks className="h-4 w-4" />} onClick={() => ga(`/project/${p.id}/bewerken`)}>
+                  Werkzaamheden kiezen
+                </Button>
+              }
+            />
           ) : (
             <div className="divide-y divide-sand-200">
               {groepen.map((g) => {
                 const Icon = GROEP_ICONS[g.id]
                 return (
                   <section key={g.id} className="px-5 py-4 sm:px-6">
-                    <h4 className="mb-2 flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-700">
+                    <h3 className="mb-2 flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-700">
                       <Icon className="h-3.5 w-3.5" /> {g.naam}
-                    </h4>
+                    </h3>
                     <ul>
                       {g.regels.map((r) => (
                         <li key={r.id} className="flex items-start justify-between gap-4 py-2.5">

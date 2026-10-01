@@ -221,7 +221,7 @@ function Resultaat({ p }: { p: Project }) {
 
       {a.elementen.length > 0 && (
         <div className="mt-4">
-          <h4 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Herkend</h4>
+          <h3 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Herkend</h3>
           <ul className="mt-2 flex flex-wrap gap-2">
             {a.elementen.map((e) => (
               <li key={e.type} className="rounded-xl bg-white/80 px-3 py-2 ring-1 ring-sand-300" title={e.toelichting || undefined}>
@@ -239,7 +239,7 @@ function Resultaat({ p }: { p: Project }) {
       {a.werkzaamheden.length > 0 && (
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Voorgestelde werkzaamheden</h4>
+            <h3 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Voorgestelde werkzaamheden</h3>
             {nogToevoegen.length > 1 && (
               <Button
                 size="sm"
@@ -285,7 +285,7 @@ function Resultaat({ p }: { p: Project }) {
 
       {maten.length > 0 && (
         <div className="mt-5">
-          <h4 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Geschatte maten</h4>
+          <h3 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Geschatte maten</h3>
           <ul className="mt-2 divide-y divide-sand-200 rounded-xl bg-white/70 ring-1 ring-sand-200">
             {maten.map((k) => {
               const m = a.afmetingen[k]!
@@ -319,7 +319,7 @@ function Resultaat({ p }: { p: Project }) {
 
       {a.opmerkingen.length > 0 && (
         <div className="mt-5">
-          <h4 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Let op</h4>
+          <h3 className="text-[0.72rem] font-semibold tracking-[0.14em] text-ink-muted uppercase">Let op</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-[0.84rem] text-ink-soft">
             {a.opmerkingen.map((o, i) => (
               <li key={i}>{o}</li>

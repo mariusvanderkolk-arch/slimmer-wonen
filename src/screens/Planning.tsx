@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { CalendarDays, Clock, Hourglass, Minus, Plus, Receipt, RotateCcw, Trash2, Gauge, TrendingUp, Wallet } from 'lucide-react'
-import { Badge, Button, Card, CardHeader, DateField, NumberField, SelectField, Switch, TextField } from '../components/ui'
+import { CalendarDays, Clock, Hourglass, Minus, Plus, Receipt, RotateCcw, Trash2, Gauge, TrendingUp, Wallet, ListChecks } from 'lucide-react'
+import { Badge, Button, Card, CardHeader, DateField, NumberField, SelectField, Switch, TextField, LeegStaat } from '../components/ui'
+import { ga } from '../lib/router'
 import { toast } from '../components/Toast'
 import { uid } from '../lib/defaults'
 import { euro, getal } from '../lib/format'
@@ -54,7 +55,16 @@ export function PlanningScherm({ p }: { p: Project }) {
               </div>
             </div>
             {taken.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm text-ink-muted">Geen taken: kies werkzaamheden bij het project.</p>
+              <LeegStaat
+                icon={<CalendarDays className="h-5 w-5" />}
+                titel="Nog geen taken om te plannen"
+                tekst="De planning maakt automatisch taken van de gekozen werkzaamheden, met uren en droogtijden."
+                actie={
+                  <Button variant="secondary" icon={<ListChecks className="h-4 w-4" />} onClick={() => ga(`/project/${p.id}/bewerken`)}>
+                  Werkzaamheden kiezen
+                </Button>
+                }
+              />
             ) : (
               <ul className="divide-y divide-sand-200">
                 {taken.map((t) => (
@@ -175,7 +185,7 @@ function BudgetKaart({ budget: b, uurtarief }: { budget: ReturnType<typeof maakB
             <Wallet className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="font-sans text-[0.98rem] font-semibold tracking-normal text-ink">Offerte vs. werkelijk</h3>
+            <h2 className="font-sans text-[0.98rem] font-semibold tracking-normal text-ink">Offerte vs. werkelijk</h2>
             <p className="mt-0.5 text-[0.82rem] text-ink-muted">Begroot volgens de offerte, werkelijk volgens je geregistreerde uren en bonnen.</p>
           </div>
         </div>

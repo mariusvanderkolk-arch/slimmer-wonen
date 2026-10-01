@@ -68,7 +68,7 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
         </div>
 
         <section className="avoid-break mt-8">
-          <h3 className="font-display text-[1.35rem] font-semibold">Werkzaamheden</h3>
+          <h2 className="font-display text-[1.35rem] font-semibold">Werkzaamheden</h2>
           <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-sm text-ink-soft sm:grid-cols-2">
             {d.werk.map(([l, o]) => (
               <li key={l} className="flex items-start gap-2">
@@ -82,7 +82,7 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
         </section>
 
         <section className="avoid-break mt-8">
-          <h3 className="font-display text-[1.35rem] font-semibold">Oppervlakken</h3>
+          <h2 className="font-display text-[1.35rem] font-semibold">Oppervlakken</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {d.opp.map(([k, v]) => (
               <div key={k} className="rounded-xl bg-sand-50 px-3.5 py-3 ring-1 ring-sand-200">
@@ -94,7 +94,7 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
         </section>
 
         <section className="mt-8">
-          <h3 className="font-display text-[1.35rem] font-semibold">Materialen</h3>
+          <h2 className="font-display text-[1.35rem] font-semibold">Materialen</h2>
           <table className="mt-2 w-full text-sm">
             <thead>
               <tr className="border-b border-sand-300 text-left text-[0.68rem] font-semibold uppercase tracking-wider text-ink-muted">
@@ -121,10 +121,12 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
             </tbody>
             <tfoot>
               <tr>
-                <td className="pt-3 pr-3 text-right font-medium text-ink-soft sm:hidden">Subtotaal materialen</td>
-                <td colSpan={2} className="hidden pt-3 pr-3 text-right font-medium text-ink-soft sm:table-cell">
+                <th scope="row" className="pt-3 pr-3 text-right font-medium text-ink-soft sm:hidden">
                   Subtotaal materialen
-                </td>
+                </th>
+                <th scope="row" colSpan={2} className="hidden pt-3 pr-3 text-right font-medium text-ink-soft sm:table-cell">
+                  Subtotaal materialen
+                </th>
                 <td className="tabnum pt-3 text-right font-semibold">{euro(d.matTotaal)}</td>
               </tr>
             </tfoot>
@@ -133,8 +135,14 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
 
         {d.arb.length > 0 && (
           <section className="avoid-break mt-8">
-            <h3 className="font-display text-[1.35rem] font-semibold">Arbeid</h3>
+            <h2 className="font-display text-[1.35rem] font-semibold">Arbeid</h2>
             <table className="mt-2 w-full text-sm">
+              <thead className="sr-only">
+                <tr>
+                  <th>Werkzaamheid</th>
+                  <th>Uren</th>
+                </tr>
+              </thead>
               <tbody>
                 {d.arb.map(([oms, uren]) => (
                   <tr key={oms} className="border-b border-sand-200">
@@ -145,13 +153,13 @@ export function OfferteDocument({ d, logo, className = '' }: { d: OfferteData; l
               </tbody>
               <tfoot>
                 <tr>
-                  <td className="pt-3 pr-3 text-right font-medium text-ink-soft">
+                  <th scope="row" className="pt-3 pr-3 text-right font-medium text-ink-soft">
                     {getal(
                       d.arb.reduce((s, a) => s + a[1], 0),
                       1,
                     )}{' '}
                     uur × {euro(d.tarief)}
-                  </td>
+                  </th>
                   <td className="tabnum pt-3 text-right font-semibold">{euro(d.arbTotaal)}</td>
                 </tr>
               </tfoot>

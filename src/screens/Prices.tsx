@@ -312,7 +312,7 @@ function ArtikelRij({ item, eigen, onDetail }: { item: CatalogusItem; eigen: Eig
       <div className="mb-3 min-w-0 lg:mb-0 lg:pt-2">
         <p className="text-[0.92rem] font-semibold text-ink">{item.naam}</p>
         <p className="mt-0.5 text-[0.78rem] text-ink-muted">{eenheidLabel(item)}</p>
-        {item.toelichting && <p className="mt-0.5 text-[0.72rem] text-ink-muted/80">{item.toelichting}</p>}
+        {item.toelichting && <p className="mt-0.5 text-[0.72rem] text-ink-muted">{item.toelichting}</p>}
       </div>
       <div className="grid grid-cols-2 gap-2.5 lg:contents">
         {WINKELS.map((w) => (

@@ -20,11 +20,11 @@
   --color-gold-300: #dcc594;
   --color-gold-400: #c8a96a;
   --color-gold-500: #b8955a;
-  --color-gold-600: #9c7b43;
+  --color-gold-600: #84663a;
   --color-gold-700: #7a5f33;
   --color-ink: #2b2620;
   --color-ink-soft: #564d42;
-  --color-ink-muted: #85796a;
+  --color-ink-muted: #6f6457;
   --color-sage: #6f8a6a;
   --color-rust: #b0573f;
 
@@ -54,8 +54,16 @@
     font: inherit;
   }
   :focus-visible {
-    outline: 2px solid var(--color-gold-500);
+    outline: 2px solid var(--color-gold-600);
     outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

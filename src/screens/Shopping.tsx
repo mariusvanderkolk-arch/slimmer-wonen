@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ArrowRight, Copy, ExternalLink, RotateCcw, Share2, Store } from 'lucide-react'
-import { Badge, Button, Card, Checkbox, Notice } from '../components/ui'
+import { ArrowRight, Copy, ExternalLink, RotateCcw, Share2, Store, ListChecks, ShoppingCart } from 'lucide-react'
+import { Badge, Button, Card, Checkbox, Notice, LeegStaat } from '../components/ui'
 import { GROEP_ICONS } from '../components/groepIcons'
 import { toast } from '../components/Toast'
 import { datum, euro } from '../lib/format'
@@ -38,7 +38,7 @@ export function Shopping({ p }: { p: Project }) {
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 px-5 py-4 sm:px-6">
               <div>
-                <p className="text-[0.98rem] font-semibold">Inkooplijst</p>
+                <h2 className="font-sans text-[0.98rem] font-semibold tracking-normal">Inkooplijst</h2>
                 <p className="text-[0.82rem] text-ink-muted">
                   {afgevinkt} van {inkoop.regels.length} artikelen afgevinkt
                 </p>
@@ -75,6 +75,7 @@ export function Shopping({ p }: { p: Project }) {
                   <button
                     key={w}
                     type="button"
+                    aria-pressed={weergave === w}
                     onClick={() => setWeergave(w)}
                     className={`h-8 rounded-full px-3 text-[0.8rem] font-medium ring-1 ring-inset transition ${
                       weergave === w ? 'bg-ink text-sand-50 ring-ink' : 'bg-white/70 text-ink-soft ring-sand-300 hover:ring-gold-400'
@@ -87,16 +88,25 @@ export function Shopping({ p }: { p: Project }) {
             </div>
 
             {inkoop.regels.length === 0 ? (
-              <p className="px-6 py-12 text-center text-sm text-ink-muted">De inkooplijst is leeg. Kies werkzaamheden en vul de maten in.</p>
+              <LeegStaat
+                icon={<ShoppingCart className="h-5 w-5" />}
+                titel="De inkooplijst is nog leeg"
+                tekst="Kies werkzaamheden en vul de maten in; daarna staat hier per winkel wat je moet kopen."
+                actie={
+                  <Button variant="secondary" icon={<ListChecks className="h-4 w-4" />} onClick={() => ga(`/project/${p.id}/bewerken`)}>
+                  Werkzaamheden kiezen
+                </Button>
+                }
+              />
             ) : (
               <div className="divide-y divide-sand-200">
                 {inkoop.groepen.map((g) => {
                   const Icon = GROEP_ICONS[g.id]
                   return (
                     <section key={g.id} className="py-2">
-                      <h4 className="flex items-center gap-2 px-5 pt-3 pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-700 sm:px-6">
+                      <h3 className="flex items-center gap-2 px-5 pt-3 pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-gold-700 sm:px-6">
                         <Icon className="h-3.5 w-3.5" /> {g.naam}
-                      </h4>
+                      </h3>
                       <ul>
                         {g.regels.map((r) => {
                           const aan = !!p.afgevinkt[r.sleutel]
@@ -111,8 +121,8 @@ export function Shopping({ p }: { p: Project }) {
                                 className="flex w-full items-start gap-3.5 px-5 py-3 text-left transition hover:bg-sand-50 sm:px-6"
                               >
                                 <Checkbox checked={aan} className="mt-0.5" />
-                                <span className={`min-w-0 flex-1 ${aan ? 'opacity-50' : ''}`}>
-                                  <span className={`block text-[0.92rem] font-medium text-ink ${aan ? 'line-through decoration-gold-500/70' : ''}`}>
+                                <span className="min-w-0 flex-1">
+                                  <span className={`block text-[0.92rem] font-medium ${aan ? 'text-ink-muted line-through decoration-gold-500/70' : 'text-ink'}`}>
                                     <span className="tabnum mr-1.5 font-semibold text-gold-700">{a?.aantal ?? r.aantal}×</span>
                                     {r.naam}
                                     {a?.link && (
@@ -137,7 +147,7 @@ export function Shopping({ p }: { p: Project }) {
                                       .join(' · ') || r.verpakking}
                                   </span>
                                 </span>
-                                <span className={`shrink-0 text-right ${aan ? 'opacity-50' : ''}`}>
+                                <span className={`shrink-0 text-right ${aan ? '[&_.text-ink]:text-ink-muted' : ''}`}>
                                   {a ? (
                                     <>
                                       <span className="tabnum block text-[0.92rem] font-semibold text-ink">{euro(a.totaal)}</span>

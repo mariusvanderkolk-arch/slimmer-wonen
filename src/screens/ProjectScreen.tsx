@@ -1,14 +1,18 @@
 import { ArrowLeft, ArrowRight, Calculator, CalendarDays, Camera, FileText, MapPin, Pencil, ShoppingCart } from 'lucide-react'
 import { Badge, Button } from '../components/ui'
+import { OpslagIndicator } from '../components/Opslag'
 import { ga, type Stap } from '../lib/router'
 import { useProject } from '../lib/store'
 import { ruimteLabel } from '../lib/ruimtes'
 import { NietGevonden } from './ProjectForm'
+import { Suspense } from 'react'
 import { Measure } from './Measure'
-import { Calculation } from './Calculation'
-import { Shopping } from './Shopping'
-import { Quote } from './Quote'
-import { PlanningScherm } from './Planning'
+import { laadLater } from '../lib/lazy'
+
+const Calculation = laadLater(() => import('./Calculation').then((m) => m.Calculation))
+const Shopping = laadLater(() => import('./Shopping').then((m) => m.Shopping))
+const Quote = laadLater(() => import('./Quote').then((m) => m.Quote))
+const PlanningScherm = laadLater(() => import('./Planning').then((m) => m.PlanningScherm))
 
 export const STAPPEN: { id: Stap; label: string; kort: string; icon: typeof Camera }[] = [
   { id: 'opmeten', label: 'Opmeten', kort: 'Opmeten', icon: Camera },
@@ -33,9 +37,12 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
             <a href="#/" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink">
               <ArrowLeft className="h-4 w-4" /> Projecten
             </a>
-            <Button variant="secondary" size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => ga(`/project/${p.id}/bewerken`)}>
-              Bewerken
-            </Button>
+            <div className="flex items-center gap-3">
+              <OpslagIndicator sinds={p.updatedAt} />
+              <Button variant="secondary" size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => ga(`/project/${p.id}/bewerken`)}>
+                Bewerken
+              </Button>
+            </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge tone="gold">{ruimteLabel(p.type)}</Badge>
@@ -92,11 +99,13 @@ export function ProjectScreen({ id, stap }: { id: string; stap: Stap }) {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <Suspense fallback={<div className="h-72 animate-pulse rounded-2xl bg-sand-200/70" aria-busy="true" aria-label="Laden" />}>
         {stap === 'opmeten' && <Measure p={p} />}
         {stap === 'berekening' && <Calculation p={p} />}
         {stap === 'inkoop' && <Shopping p={p} />}
         {stap === 'offerte' && <Quote p={p} />}
         {stap === 'planning' && <PlanningScherm p={p} />}
+        </Suspense>
       </div>
 
       <div className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-sand-300/70 bg-sand-100/90 backdrop-blur-md">

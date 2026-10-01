@@ -1,6 +1,6 @@
 # Slimmer Wonen
 
-**Opmeten, materialen berekenen en een nette inkooplijst voor badkamerrenovaties** — voor aannemers en klussers.
+**Opmeten, materialen berekenen, inkooplijst, offerte en planning voor badkamers, toiletten, keukens en vloeren** — voor aannemers en klussers.
 
 🔗 Live demo: https://mariusvanderkolk-arch.github.io/slimmer-wonen/
 
@@ -8,25 +8,35 @@
 
 ## Wat kan de app?
 
-1. **Nieuw project** — naam, klant, adres, type ruimte (badkamer) en een checklist met werkzaamheden
-   (sloopwerk, egaliseren, waterdicht maken, vloerverwarming, wand- en vloertegels, inloopdouche, hangtoilet,
-   wastafelmeubel, kitwerk, stucwerk).
-2. **Opmeten** — foto's maken met de camera van je telefoon of uploaden (bewaard bij het project), maten invoeren
-   (lengte, breedte, hoogte, tegelhoogte, deuren en ramen, douchezone), tegelformaat en snijverlies. Een schematische
-   plattegrond tekent live mee.
-3. **Berekening** — wand- en vloeroppervlak (minus openingen) en alle materialen met onderbouwing: tegels (m² en dozen),
-   tegellijm, voegmiddel, primer, waterdichting en afdichtband, egaliseermiddel, kit, tegelprofielen, vloerverwarming,
-   stucwerk en sanitair.
-4. **Inkooplijst** — gegroepeerd, af te vinken, met richtprijs per artikel, de goedkoopste winkel per artikel en het
-   totaal per winkel (Gamma, Praxis, Hornbach, Karwei). Kopiëren en delen.
-5. **Offerte** — een nette, printvriendelijke raming (materialen + optioneel arbeid) die je via de browser als PDF bewaart.
-6. **Prijzen beheren** (`#/prijzen`, via de header, de Over-pagina en de prijsmelding op de inkooplijst) — onderhoud zelf
-   de prijzen per artikel en per winkel: prijs incl. btw, verpakking/inhoud (bijv. zak à 20 kg), productnaam, link en
-   'niet leverbaar'. Met zoeken, filters (eigen / voorbeeld / niet leverbaar), 'laatst bijgewerkt' per prijs,
-   export/import als JSON of CSV en 'Terug naar voorbeeldprijzen'.
+1. **Nieuw project** — naam, klant, adres en type ruimte: **badkamer, toilet, keuken (spatwand) of vloer/woonkamer
+   (laminaat, PVC of tegels, ondervloer, plinten)**, met een checklist met werkzaamheden per ruimte.
+2. **Opmeten** — foto's maken of uploaden (verkleind tot max. 1600 px JPEG en alleen lokaal bewaard), maten invoeren
+   (lengte, breedte, hoogte, tegelhoogte, deuren en ramen, douchezone, spatwand), tegelformaat en snijverlies, met
+   uitleg-knopjes bij technische velden. Een schematische plattegrond tekent live mee.
+   - **AI-fotoanalyse (optioneel, eigen API-sleutel)** — Google Gemini (standaard, gratis te proberen met limieten),
+     OpenAI, xAI of een eigen OpenAI-compatibele dienst. Herkent elementen, stelt werkzaamheden voor en schat maten;
+     alles zijn suggesties die je per stuk overneemt.
+   - **AR-meten (beta)** — WebXR hit-test: tik twee punten aan en vul de afstand in als lengte, breedte of hoogte.
+     Alleen op toestellen met AR in de browser (Android + Chrome + ARCore); elders een nette melding.
+3. **Berekening** — oppervlakken en alle materialen met onderbouwing (tegels, lijm, voeg, primer, waterdichting,
+   egaliseren, kit, profielen, laminaat/PVC per pak, ondervloer, plinten, sanitair, stucwerk).
+4. **Inkooplijst** — gegroepeerd, af te vinken, met richtprijs, goedkoopste winkel per artikel en totaal per winkel.
+5. **Offerte** — printvriendelijk met bedrijfsprofiel (naam, logo, KvK, btw, IBAN, contact), offertenummer,
+   geldigheidsdatum en betaaltermijn. **Offerte-link voor de klant**: de klant opent de offerte op de telefoon
+   (de gegevens zitten gecomprimeerd in de link, er is geen server) en stuurt zijn akkoord via WhatsApp of e-mail.
+6. **Planning & uren** — dagplanning met droogtijden en weekenden, urenregistratie, extra kosten en
+   budgetbewaking ten opzichte van de offerte.
+7. **Prijzen beheren** — eigen prijzen per artikel en winkel, export/import als JSON of CSV.
+8. **Instellingen** — bedrijfsgegevens, offerte-instellingen, AI-sleutel en **volledige back-up**
+   (alle projecten, foto's als data-URL, prijzen en bedrijfsgegevens; API-sleutels gaan niet mee) met samenvoegen of
+   vervangen bij terugzetten, plus een back-upherinnering.
 
-Projecten worden lokaal in de browser opgeslagen (localStorage; foto's in IndexedDB). Er gaat niets naar een server.
-De app is een installeerbare PWA.
+Verder: korte rondleiding bij het eerste bezoek, opslag-indicator en waarschuwing als de browseropslag vol is,
+foutafhandeling zonder wit scherm, toetsenbordbediening en focusweergave, en lazy loading van zware onderdelen.
+
+Alles wordt lokaal in de browser opgeslagen (localStorage; foto's in IndexedDB). Er gaat niets naar een server,
+behalve foto's die je zelf laat analyseren door de AI-dienst die je kiest. Synchroniseren tussen apparaten
+(cloud) is er nog niet; gebruik daarvoor het back-upbestand. De app is een installeerbare PWA.
 
 ## Wat is (nog) voorbeeld?
 
@@ -34,8 +44,9 @@ De app is een installeerbare PWA.
   [`src/lib/prices.ts`](src/lib/prices.ts) is alleen bedoeld om de werking te tonen. Zodra je via *Prijzen beheren*
   eigen prijzen invult, gaan die vóór; de melding op de inkooplijst en in de offerte laat zien hoeveel prijzen nog
   voorbeeld zijn, of 'Eigen prijzen, bijgewerkt op …' als alles eigen is.
-- **Automatisch opmeten / foto-analyse komt binnenkort.** Foto's worden bewaard als referentie; de berekening gebruikt
-  de handmatig ingevoerde maten.
+- **AI-analyse en AR-meten zijn hulpmiddelen.** AI-maten zijn grove schattingen en AR wijkt vaak een paar cm af;
+  de berekening gebruikt altijd de maten die in de velden staan. AI vereist een eigen API-sleutel; AR een geschikt toestel.
+- **Cloud-sync bestaat nog niet** (staat als 'binnenkort' in de app).
 - **Arbeidsuren** in de offerte zijn een indicatieve schatting op basis van eenvoudige normen.
 
 ## Rekenregels

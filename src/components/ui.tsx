@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, CircleCheck, Info, X } from 'lucide-react'
 import { getal, leesGetal } from '../lib/format'
@@ -57,7 +57,7 @@ export function CardHeader({
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <h3 className="font-sans text-[0.98rem] font-semibold tracking-normal text-ink">{title}</h3>
+        <h2 className="font-sans text-[0.98rem] font-semibold tracking-normal text-ink">{title}</h2>
         {sub && <p className="mt-0.5 text-[0.82rem] leading-snug text-ink-muted">{sub}</p>}
       </div>
       {action}
@@ -203,6 +203,7 @@ export function NumberField({
   hint,
   decimals = 2,
   compact = false,
+  tip,
 }: {
   label: string
   value: number
@@ -213,6 +214,8 @@ export function NumberField({
   hint?: string
   decimals?: number
   compact?: boolean
+  /** korte uitleg achter een i-knopje */
+  tip?: string
 }) {
   const id = useId()
   const [tekst, setTekst] = useState(getal(value, decimals))
@@ -222,12 +225,16 @@ export function NumberField({
   }, [value])
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="mb-1.5 block truncate text-[0.8rem] font-medium text-ink-soft">
-        {label}
-      </label>
+      <div className="mb-1.5 flex min-w-0 items-center gap-1">
+        <label htmlFor={id} className="block truncate text-[0.8rem] font-medium text-ink-soft">
+          {label}
+        </label>
+        {tip && <Tip tekst={tip} label={label} />}
+      </div>
       <div className="relative">
         <input
           id={id}
+          aria-describedby={[unit ? `${id}-eenheid` : '', hint ? `${id}-hint` : ''].filter(Boolean).join(' ') || undefined}
           inputMode="decimal"
           className={`${inputBase} tabnum ${compact ? 'h-11' : 'h-12'} ${unit ? 'pr-12' : ''}`}
           value={tekst}
@@ -240,11 +247,54 @@ export function NumberField({
           onBlur={() => setTekst(getal(value, decimals))}
         />
         {unit && (
-          <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm text-ink-muted">{unit}</span>
+          <span id={`${id}-eenheid`} className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-sm text-ink-muted">
+            {unit}
+          </span>
         )}
       </div>
-      {hint && <p className="mt-1.5 text-xs leading-snug text-ink-muted">{hint}</p>}
+      {hint && (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs leading-snug text-ink-muted">
+          {hint}
+        </p>
+      )}
     </div>
+  )
+}
+
+/** Klein i-knopje met uitleg; werkt met muis (hover), toetsenbord (focus) en touch (tik). */
+export function Tip({ tekst, label }: { tekst: string; label?: string }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  useEffect(() => {
+    if (!open) return
+    const f = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  }, [open])
+  return (
+    <span className="relative inline-flex" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        aria-label={label ? `Uitleg: ${label}` : 'Uitleg'}
+        aria-describedby={open ? id : undefined}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="grid h-5 w-5 place-items-center rounded-full text-ink-muted hover:text-gold-700"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <span
+          id={id}
+          role="tooltip"
+          className="absolute bottom-full left-1/2 z-30 mb-2 w-60 -translate-x-1/2 rounded-xl bg-ink px-3 py-2 text-left text-[0.76rem] leading-snug font-normal text-sand-50 shadow-lift"
+        >
+          {tekst}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -314,6 +364,37 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
 }
 
 /** Modaal venster: gecentreerd op desktop, als sheet van onderen op mobiel. */
+const FOCUSBAAR = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+
+/** Houdt de toetsenbordfocus binnen een venster en zet hem na sluiten terug. */
+export function useFocusVal(ref: RefObject<HTMLElement | null>, actief: boolean) {
+  useEffect(() => {
+    if (!actief) return
+    const vorige = document.activeElement as HTMLElement | null
+    const el = ref.current
+    const eerste = el?.querySelector<HTMLElement>('[data-autofocus]') ?? el?.querySelector<HTMLElement>(FOCUSBAAR)
+    ;(eerste ?? el)?.focus({ preventScroll: true })
+    const f = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !el) return
+      const lijst = [...el.querySelectorAll<HTMLElement>(FOCUSBAAR)].filter((x) => x.offsetParent !== null || x.getClientRects().length)
+      if (!lijst.length) return
+      const [a, z] = [lijst[0], lijst[lijst.length - 1]]
+      if (e.shiftKey && document.activeElement === a) {
+        e.preventDefault()
+        z.focus()
+      } else if (!e.shiftKey && document.activeElement === z) {
+        e.preventDefault()
+        a.focus()
+      }
+    }
+    document.addEventListener('keydown', f)
+    return () => {
+      document.removeEventListener('keydown', f)
+      if (vorige && document.contains(vorige)) vorige.focus({ preventScroll: true })
+    }
+  }, [actief, ref])
+}
+
 export function Dialog({
   open,
   onClose,
@@ -329,6 +410,9 @@ export function Dialog({
   children?: ReactNode
   footer?: ReactNode
 }) {
+  const venster = useRef<HTMLDivElement>(null)
+  const titelId = useId()
+  useFocusVal(venster, open)
   useEffect(() => {
     if (!open) return
     const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -344,14 +428,19 @@ export function Dialog({
   return createPortal(
     <div className="no-print fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] sm:items-center sm:p-6" onClick={onClose}>
       <div
+        ref={venster}
         role="dialog"
         aria-modal="true"
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-sand-300/70 bg-paper shadow-lift sm:max-w-lg sm:rounded-3xl"
+        aria-labelledby={titelId}
+        tabIndex={-1}
+        className="max-h-[92dvh] focus:outline-none w-full overflow-y-auto rounded-t-3xl border border-sand-300/70 bg-paper shadow-lift sm:max-w-lg sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 border-b border-sand-200 px-5 pt-5 pb-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[1.6rem] leading-tight font-semibold">{title}</h2>
+            <h2 id={titelId} className="font-display text-[1.6rem] leading-tight font-semibold">
+              {title}
+            </h2>
             {sub && <p className="mt-0.5 text-[0.82rem] text-ink-muted">{sub}</p>}
           </div>
           <button type="button" aria-label="Sluiten" onClick={onClose} className="-mr-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-sand-100 hover:text-ink">
@@ -383,5 +472,17 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
     >
       <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`} />
     </button>
+  )
+}
+
+/** Lege toestand met uitleg en een duidelijke vervolgstap. */
+export function LeegStaat({ icon, titel, tekst, actie }: { icon: ReactNode; titel: string; tekst: ReactNode; actie?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center px-6 py-10 text-center">
+      <span className="grid h-12 w-12 place-items-center rounded-full bg-sand-100 text-gold-600 ring-1 ring-sand-300">{icon}</span>
+      <p className="mt-3 text-[0.95rem] font-semibold text-ink">{titel}</p>
+      <p className="mt-1 max-w-sm text-[0.84rem] leading-relaxed text-ink-muted">{tekst}</p>
+      {actie && <div className="mt-4">{actie}</div>}
+    </div>
   )
 }

@@ -31,6 +31,7 @@ function Chip({ actief, children, onClick }: { actief?: boolean; children: React
   return (
     <button
       type="button"
+      aria-pressed={!!actief}
       onClick={onClick}
       className={`tabnum h-8 rounded-full px-3 text-[0.8rem] font-medium ring-1 ring-inset transition ${
         actief ? 'bg-ink text-sand-50 ring-ink' : 'bg-white/70 text-ink-soft ring-sand-300 hover:ring-gold-400'
@@ -112,7 +113,7 @@ export function Measure({ p }: { p: Project }) {
             <NumberField label="Hoogte" unit="m" value={a.hoogte} onChange={(v) => setA({ hoogte: v, tegelhoogte: tegelhoogteVol ? v : Math.min(a.tegelhoogte, v) })} />
             {toonTegelhoogte && <div className="col-span-2 sm:col-span-3">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <NumberField label="Tegelhoogte wand" unit="m" value={a.tegelhoogte} onChange={(v) => setA({ tegelhoogte: v })} />
+                <NumberField label="Tegelhoogte wand" tip="Tot welke hoogte de wanden worden betegeld. Boven de tegels valt de wand onder stucwerk (als je dat aanvinkt)." unit="m" value={a.tegelhoogte} onChange={(v) => setA({ tegelhoogte: v })} />
                 <div className="col-span-1 flex flex-wrap items-end gap-2 pb-2 sm:col-span-2">
                   <Chip actief={tegelhoogteVol} onClick={() => setA({ tegelhoogte: a.hoogte })}>
                     Tot plafond
@@ -273,7 +274,7 @@ export function Measure({ p }: { p: Project }) {
           <CardHeader icon={<Settings2 className="h-5 w-5" />} title="Uitgangspunten" sub="Pas aan op de klus en je eigen werkwijze." />
           <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <div>
-              <NumberField label={type === 'vloer' && s.legvloer ? 'Snijverlies vloer' : 'Snijverlies tegels'} unit="%" decimals={1} value={p.snijverlies} onChange={(v) => upd((x) => ({ ...x, snijverlies: Math.min(v, 50) }))} />
+              <NumberField label={type === 'vloer' && s.legvloer ? 'Snijverlies vloer' : 'Snijverlies tegels'} tip="Extra materiaal voor zaagwerk en breuk. Wordt opgeteld bij de berekende m² voordat het aantal dozen of pakken wordt bepaald." unit="%" decimals={1} value={p.snijverlies} onChange={(v) => upd((x) => ({ ...x, snijverlies: Math.min(v, 50) }))} />
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {(type === 'vloer' && s.legvloer ? [5, 7, 10] : [5, 10, 15]).map((n) => (
                   <Chip key={n} actief={p.snijverlies === n} onClick={() => upd((x) => ({ ...x, snijverlies: n }))}>
@@ -290,6 +291,7 @@ export function Measure({ p }: { p: Project }) {
             {s.egaliseren && (
               <NumberField
                 label="Laagdikte egaliseren"
+                tip="Bepaalt het aantal zakken egaliseermiddel (ca. 1,6 kg per m² per mm)."
                 unit="mm"
                 decimals={1}
                 value={a.egaliseerDikte}
@@ -374,9 +376,9 @@ function TegelVelden({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <NumberField compact label="Lengte" unit="cm" decimals={1} value={tegel.lengte} onChange={(v) => onChange({ lengte: v })} />
         <NumberField compact label="Breedte" unit="cm" decimals={1} value={tegel.breedte} onChange={(v) => onChange({ breedte: v })} />
-        <NumberField compact label="Per doos" unit="m²" value={tegel.m2PerDoos} onChange={(v) => onChange({ m2PerDoos: v })} />
-        <NumberField compact label="Dikte" unit="mm" decimals={1} value={tegel.dikte} onChange={(v) => onChange({ dikte: v })} />
-        <NumberField compact label="Voeg" unit="mm" decimals={1} value={tegel.voeg} onChange={(v) => onChange({ voeg: v })} />
+        <NumberField compact label="Per doos" tip="Hoeveel m² tegels er in één doos zitten. Staat op de doos of de productpagina." unit="m²" value={tegel.m2PerDoos} onChange={(v) => onChange({ m2PerDoos: v })} />
+        <NumberField compact label="Dikte" tip="Tegeldikte in mm. Samen met formaat en voeg bepaalt dit hoeveel voegmiddel nodig is." unit="mm" decimals={1} value={tegel.dikte} onChange={(v) => onChange({ dikte: v })} />
+        <NumberField compact label="Voeg" tip="Voegbreedte in mm. Gangbaar: 2–3 mm bij grote tegels, 3–5 mm bij kleine tegels." unit="mm" decimals={1} value={tegel.voeg} onChange={(v) => onChange({ voeg: v })} />
       </div>
     </div>
   )

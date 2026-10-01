@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, ImagePlus, Images, Trash2, X } from 'lucide-react'
-import { Button, Card, CardHeader } from './ui'
+import { Button, Card, CardHeader, useFocusVal } from './ui'
 import { bewaarFoto, useFotoUrl, verkleinFoto, verwijderFoto } from '../lib/photos'
 import { projectStore } from '../lib/store'
 import { uid } from '../lib/defaults'
@@ -97,6 +97,7 @@ function Thumb({ foto, onClick }: { foto: PhotoRef; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Foto ${foto.naam} bekijken`}
       className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-sand-200 ring-1 ring-sand-300 transition hover:ring-2 hover:ring-gold-400"
     >
       {url && <img src={url} alt={foto.naam} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />}
@@ -109,8 +110,15 @@ function Thumb({ foto, onClick }: { foto: PhotoRef; onClick: () => void }) {
 
 function Lightbox({ foto, onClose, onDelete }: { foto: PhotoRef; onClose: () => void; onDelete: () => void }) {
   const url = useFotoUrl(foto.id)
+  const venster = useRef<HTMLDivElement>(null)
+  useFocusVal(venster, true)
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  }, [onClose])
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/90 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true">
+    <div ref={venster} className="fixed inset-0 z-50 flex flex-col bg-ink/90 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Foto: ${foto.naam}`}>
       <div className="flex items-center justify-between gap-3 p-4 text-sand-50" onClick={(e) => e.stopPropagation()}>
         <p className="truncate text-sm">{foto.naam}</p>
         <div className="flex gap-2">

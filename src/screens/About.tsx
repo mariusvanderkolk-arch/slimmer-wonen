@@ -1,5 +1,6 @@
 import { Calculator, Camera, Database, RotateCcw, ScanLine, ShoppingCart } from 'lucide-react'
 import { LogoMark } from '../components/Logo'
+import { ONBOARDING_SLEUTEL } from '../components/Onboarding'
 import { Badge, Button, Card, PageTitle } from '../components/ui'
 import { toast } from '../components/Toast'
 import { projectStore } from '../lib/store'
@@ -86,7 +87,7 @@ export function About() {
         <LogoMark className="h-14 w-14 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">Voorbeeldprojecten</p>
-          <p className="mt-0.5 text-sm text-ink-muted">Zet de twee voorbeeldprojecten terug om de app te verkennen.</p>
+          <p className="mt-0.5 text-sm text-ink-muted">Zet de vier voorbeeldprojecten (badkamer, toilet, keuken en woonkamer) terug om de app te verkennen.</p>
         </div>
         <Button
           variant="secondary"
@@ -100,6 +101,18 @@ export function About() {
           Herstellen
         </Button>
       </Card>
+      <div className="mt-4 text-center">
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.removeItem(ONBOARDING_SLEUTEL)
+            ga('/')
+          }}
+          className="rounded-lg px-3 py-2 text-sm font-medium text-ink-soft underline underline-offset-4 hover:text-ink"
+        >
+          Korte rondleiding opnieuw bekijken
+        </button>
+      </div>
     </div>
   )
 }
