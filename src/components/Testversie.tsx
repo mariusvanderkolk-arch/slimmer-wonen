@@ -25,7 +25,9 @@ export function TestBanner() {
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-paper/90 px-2.5 py-1.5 text-[0.8rem] font-medium text-ink ring-1 ring-gold-400/50 transition hover:bg-paper hover:ring-gold-500"
           >
             <MessageSquareHeart aria-hidden className="h-4 w-4 text-gold-600" />
-            Feedback<span className="hidden sm:inline">&nbsp;geven</span>
+            <span>
+              Feedback<span className="hidden sm:inline"> geven</span>
+            </span>
           </button>
         </div>
       </div>
