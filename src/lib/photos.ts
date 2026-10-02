@@ -1,7 +1,8 @@
 /** Foto's worden lokaal in IndexedDB bewaard (localStorage is daar te klein voor). */
 import { useEffect, useState } from 'react'
+import { OPSLAG_PREFIX } from './modus'
 
-const DB = 'slimmer-wonen'
+const DB = OPSLAG_PREFIX
 const STORE = 'fotos'
 
 function open(): Promise<IDBDatabase> {

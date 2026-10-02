@@ -5,8 +5,9 @@ import { uid } from './defaults'
 import { maakFactuur, normaliseerFactuur, volgendFactuurnummer, type Factuur } from './factuur'
 import type { OfferteData } from './offerte'
 import { vandaag } from './planning'
+import { sleutel } from './modus'
 
-export const factuurStore = maakLokaleStore<Factuur[]>('slimmer-wonen:facturen:v1', () => [], (ruw) =>
+export const factuurStore = maakLokaleStore<Factuur[]>(sleutel('facturen:v1'), () => [], (ruw) =>
   Array.isArray(ruw) ? ruw.map(normaliseerFactuur).filter((f): f is Factuur => f != null) : [],
 )
 export const useFacturen = () => factuurStore.use()

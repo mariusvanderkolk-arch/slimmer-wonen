@@ -7,13 +7,14 @@ import { euro } from '../lib/format'
 import { akkoordBericht, datumNl, decodeerOfferte, mailtoLink, whatsappLink, type OfferteData } from '../lib/offerte'
 import { vandaag } from '../lib/planning'
 import { kopieer } from '../lib/share'
+import { sleutel as opslagSleutel } from '../lib/modus'
 
 interface Akkoord {
   naam: string
   opmerking: string
   datum: string
 }
-const sleutel = (nr: string) => `slimmer-wonen:akkoord:${nr}`
+const sleutel = (nr: string) => opslagSleutel(`akkoord:${nr}`)
 
 /** Alleen-lezen offerte voor de klant, met akkoord via een vooraf ingevuld bericht. */
 export function KlantOfferte({ code }: { code: string }) {

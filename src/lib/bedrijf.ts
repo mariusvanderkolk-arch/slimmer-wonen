@@ -1,5 +1,6 @@
 /** Bedrijfsprofiel en offerte-instellingen (lokaal op dit apparaat). */
 import { maakLokaleStore } from './lokaal'
+import { sleutel } from './modus'
 
 export interface Bedrijf {
   naam: string
@@ -46,7 +47,7 @@ export const standaardBedrijf = (): Bedrijf => ({
   betaalDagen: 14,
 })
 
-export const bedrijfStore = maakLokaleStore<Bedrijf>('slimmer-wonen:bedrijf:v1', standaardBedrijf)
+export const bedrijfStore = maakLokaleStore<Bedrijf>(sleutel('bedrijf:v1'), standaardBedrijf)
 export const useBedrijf = bedrijfStore.use
 
 /** Nieuw offertenummer, bijv. "OF-2026-007", en hoog de teller op. */

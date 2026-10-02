@@ -9,8 +9,9 @@ import { alleFotoIds, bewaarFoto, haalFoto, verwijderFoto } from './photos'
 import { voegSamen } from './eigenPrijzen'
 import { downloadBestand } from './download'
 import { factuurStore } from './factuurStore'
+import { sleutel } from './modus'
 
-export const backupStatus = maakLokaleStore<{ laatste: number | null; later: number | null }>('slimmer-wonen:backup:v1', () => ({ laatste: null, later: null }))
+export const backupStatus = maakLokaleStore<{ laatste: number | null; later: number | null }>(sleutel('backup:v1'), () => ({ laatste: null, later: null }))
 
 const naarDataUrl = (b: Blob) =>
   new Promise<string>((res, rej) => {

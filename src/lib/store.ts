@@ -2,10 +2,11 @@
 import { useSyncExternalStore } from 'react'
 import { normaliseerProject, voorbeeldProjecten } from './defaults'
 import type { Project } from './types'
+import { sleutel } from './modus'
 
-const SLEUTEL = 'slimmer-wonen:projecten:v1'
+const SLEUTEL = sleutel('projecten:v1')
 /** Versie van de voorbeeldset; bij een hogere versie worden nieuwe voorbeelden één keer toegevoegd. */
-const VOORBEELD_SLEUTEL = 'slimmer-wonen:voorbeelden'
+const VOORBEELD_SLEUTEL = sleutel('voorbeelden')
 const VOORBEELD_VERSIE = 2
 
 let projecten: Project[] = laad()

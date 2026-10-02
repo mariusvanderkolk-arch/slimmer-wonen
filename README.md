@@ -100,3 +100,12 @@ npm run icons    # PWA-iconen opnieuw genereren uit public/logo-mark.svg
 ```
 
 Stack: Vite, React, TypeScript, Tailwind CSS. Publicatie via GitHub Actions naar GitHub Pages.
+
+## Testversie voor aannemers
+
+Een aparte testlink om door te sturen: **https://mariusvanderkolk-arch.github.io/slimmer-wonen-test/**
+
+- Zelfde code, gebouwd met `VITE_TEST_MODE=true` (gebeurt automatisch in de repo `slimmer-wonen-test`, omdat de reponaam op `-test` eindigt).
+- Toont een banner "Testversie", een knop **Feedback geven** (formulier, versturen via WhatsApp of e-mail, geen server), titel "Slimmer Wonen (test)" en `noindex`.
+- Gebruikt een eigen opslag (`slimmer-wonen-test:*`), dus botst niet met de gewone app op hetzelfde apparaat. Voorbeeldprojecten en rondleiding verschijnen bij het eerste bezoek.
+- Bijwerken: `npm run publiceer:test` zet de huidige `origin/main` op de testlink (of `npm run publiceer:test -- <branch>`). Lokaal bouwen: `npm run build:test` (map `dist-test`).

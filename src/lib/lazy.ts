@@ -1,7 +1,8 @@
 /** React.lazy met één automatische herlaadpoging als een onderdeel na een update niet meer bestaat. */
 import { lazy, type ComponentType } from 'react'
+import { sleutel } from './modus'
 
-const SLEUTEL = 'slimmer-wonen:herladen'
+const SLEUTEL = sleutel('herladen')
 
 export function laadLater<P extends object>(laad: () => Promise<ComponentType<P>>) {
   return lazy(async () => {

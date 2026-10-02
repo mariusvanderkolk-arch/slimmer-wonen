@@ -4,8 +4,9 @@ import { ArrowLeft, ArrowRight, Calculator, Camera, FileSignature, ShieldCheck, 
 import { Button, useFocusVal } from './ui'
 import { ga } from '../lib/router'
 import { projectStore } from '../lib/store'
+import { sleutel } from '../lib/modus'
 
-export const ONBOARDING_SLEUTEL = 'slimmer-wonen:onboarding'
+export const ONBOARDING_SLEUTEL = sleutel('onboarding')
 
 const SCHERMEN = [
   {

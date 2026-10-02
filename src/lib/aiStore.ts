@@ -2,10 +2,11 @@
 import { maakLokaleStore } from './lokaal'
 import { standaardAiInstellingen, type AiInstellingen, type AiProvider, type Afbeelding } from './ai'
 import { haalFoto } from './photos'
+import { sleutel } from './modus'
 
 const PROVIDER_IDS: AiProvider[] = ['gemini', 'openai', 'xai', 'eigen']
 
-export const aiStore = maakLokaleStore<AiInstellingen>('slimmer-wonen:ai:v1', standaardAiInstellingen, (ruw) => {
+export const aiStore = maakLokaleStore<AiInstellingen>(sleutel('ai:v1'), standaardAiInstellingen, (ruw) => {
   const r = (ruw ?? {}) as Partial<AiInstellingen>
   const tekstMap = (x: unknown) =>
     Object.fromEntries(Object.entries(x && typeof x === 'object' ? x : {}).filter(([k, v]) => PROVIDER_IDS.includes(k as AiProvider) && typeof v === 'string'))

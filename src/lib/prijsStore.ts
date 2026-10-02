@@ -3,8 +3,9 @@ import { useSyncExternalStore } from 'react'
 import { metEigenPrijzen, verwijderEigenPrijs, voegSamen, zetEigenPrijs, type EigenPrijs, type EigenPrijzen } from './eigenPrijzen'
 import { voorbeeldPrijsBron, type PrijsBron, type WinkelId } from './prices'
 import type { ProductId } from './calc'
+import { sleutel } from './modus'
 
-const SLEUTEL = 'slimmer-wonen:prijzen:v1'
+const SLEUTEL = sleutel('prijzen:v1')
 
 function laad(): EigenPrijzen {
   try {
