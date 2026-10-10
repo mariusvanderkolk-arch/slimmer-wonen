@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Slimmer Wonen heet nu Maatklaar</title>
+<link rel="canonical" href="https://mariusvanderkolk-arch.github.io/maatklaar/" />
+<script>
+  // Stuur door met behoud van pad, ?query en #hash (bijv. #/offerte-bekijken/...).
+  (function () {
+    var oud = '/slimmer-wonen/', nieuw = '/maatklaar/';
+    var p = location.pathname;
+    var rest = p.indexOf(oud) === 0 ? p.slice(oud.length) : '';
+    if (rest === 'index.html' || rest === '404.html') rest = '';
+    location.replace(nieuw + rest + location.search + location.hash);
+  })();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=https://mariusvanderkolk-arch.github.io/maatklaar/" /></noscript>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#F5EFE6;color:#2B2620;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;padding:24px;box-sizing:border-box}
+  h1{font-family:Georgia,serif;font-weight:600;font-size:28px;margin:0 0 10px}
+  p{margin:0 0 18px;line-height:1.5;color:#5E5448}
+  a{display:inline-block;background:#2B2620;color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Slimmer Wonen heet nu Maatklaar</h1>
+  <p>Opgemeten, ontworpen, offerte klaar. Je wordt doorgestuurd&hellip;<br />Je projecten en prijzen blijven gewoon staan.</p>
+  <a id="ga" href="https://mariusvanderkolk-arch.github.io/maatklaar/">Open Maatklaar</a>
+</main>
+<script>document.getElementById('ga').href = '/maatklaar/' + location.search + location.hash</script>
+</body>
+</html>
